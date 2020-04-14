@@ -1,14 +1,18 @@
 <template>
-  <Network ref="network"
-           class="wrapper"
-           :nodes="nodes"
-           :edges="edges"
-           :options="options"
-           :events="['selectNode']"
-           @select-node="onNodeSelected"/>
+  <div>
+    <Navbar/>
+    <Network ref="network"
+             class="wrapper"
+             :nodes="nodes"
+             :edges="edges"
+             :options="options"
+             :events="['selectNode']"
+             @select-node="onNodeSelected"/>
+  </div>
 </template>
 
 <script>
+  import Navbar from "../components/Navbar";
   import axios from "axios"
   import {Network} from "vue-vis-network";
 
@@ -17,6 +21,7 @@
   export default {
     name: "Topology",
     components: {
+      Navbar,
       Network
     },
     data() {
@@ -26,7 +31,11 @@
         options: {
           edges: {
             color: 'gray'
-          }
+          },
+          physics: {
+            barnesHut: {gravitationalConstant: -30000},
+            stabilization: {iterations: 2500}
+          },
         },
         devices: {}
       }
@@ -42,7 +51,7 @@
               id: device.dpid,
               label: 'Device ' + +device.dpid,
               image: '/images/router.png',
-              shape: 'image',
+              shape: 'image'
             });
 
             if (this.devices[device.dpid] === undefined)
@@ -53,7 +62,7 @@
 
           for (const link of responses[1].data) {
             this.edges.push({
-              from: link.src.dpid, to: link.dst.dpid, arrows: {
+              from: link.src.dpid, to: link.dst.dpid, length: 300, arrows: {
                 to: {
                   enabled: true,
                   type: 'triangle'
@@ -61,6 +70,8 @@
               }
             })
           }
+
+          this.options.physics.enabled = true;
         })
         .catch(error => {
           console.error(error);
@@ -288,6 +299,7 @@
     },
     methods: {
       onNodeSelected($event) {
+        console.log($event)
         //this.nodes.find(e => e.id === $event.nodes[0]).shape = 'circle';
         console.log(this.devices[$event.nodes[0]])
       }
@@ -297,8 +309,9 @@
 
 <style lang="scss" scoped>
   .wrapper {
-    min-height: 100vh;
+    margin-top: 60px;
+    min-height: calc(100vh - 60px);
     background-color: #f0f0f0;
-    height: 100vh;
+    height: calc(100vh - 60px);
   }
 </style>
