@@ -230,6 +230,10 @@
           ];
           this.devices = {
             "0000000000000001": {
+              "id": "0000000000000001",
+              "label": 'Device 1',
+              "image": '/images/router.png',
+              "shape": 'image',
               "ports": [
                 {
                   "hw_addr": "b6:82:4e:c2:c4:b5",
@@ -258,6 +262,10 @@
               ]
             },
             "0000000000000002": {
+              "id": "0000000000000002",
+              "label": 'Device 2',
+              "image": '/images/router.png',
+              "shape": 'image',
               "ports": [
                 {
                   "hw_addr": "ea:0c:1d:80:86:db",
@@ -274,6 +282,10 @@
               ]
             },
             "0000000000000003": {
+              "id": "0000000000000003",
+              "label": 'Device 3',
+              "image": '/images/router.png',
+              "shape": 'image',
               "ports": [
                 {
                   "hw_addr": "76:83:68:b8:d8:94",
@@ -290,6 +302,10 @@
               ]
             },
             "0000000000000004": {
+              "id": "0000000000000004",
+              "label": 'Device 4',
+              "image": '/images/router.png',
+              "shape": 'image',
               "ports": [
                 {
                   "hw_addr": "1e:7c:6d:56:aa:e0",
