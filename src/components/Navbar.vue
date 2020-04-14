@@ -1,16 +1,26 @@
 <template>
   <div class="nav-bar">
+    <button class="icon" @click="toggleLeftMenu">
+      <span class="mdi mdi-menu"/>
+    </button>
+
     <a href="/"><h1>Lora-Vue</h1></a>
   </div>
 </template>
 
 <script>
   export default {
-    name: "Navbar"
+    name: "Navbar",
+    methods: {
+      toggleLeftMenu() {
+        this.$store.commit('setLeftMenu', !this.$store.getters.getLeftMenu);
+      }
+    }
   }
 </script>
 
 <style lang="scss" scoped>
+  @import "../assets/styles/colors";
   .nav-bar {
     top: 0;
     left: 0;
@@ -18,7 +28,7 @@
     height: 60px;
     width: 100%;
     background-color: #FFF;
-    box-shadow: 0 0 10px rgba(0, 0, 0, 0.5);;
+    box-shadow: $shadow;
     z-index: 1000;
     display: flex;
     align-items: center;

@@ -12,6 +12,7 @@ h1, h2, h3, h4, h5, h6 {
 }
 
 p {
+  font-size: 18px;
   color: $primary;
 }
 
@@ -30,6 +31,21 @@ button.text {
   border: none;
 }
 
+button.icon {
+  font-size: 24px;
+  width: 40px;
+  height: 40px;
+  border: none;
+  padding: 0;
+  color: $primary;
+}
+
+button.icon:hover {
+  background-color: $secondary;
+  border-radius: 30px;
+  color: $primary;
+}
+
 button:hover {
   color: white;
   background-color: $lime;
@@ -38,4 +54,8 @@ button:hover {
 a {
   text-decoration: none;
   color: inherit;
+}
+
+.bold {
+  font-weight: bold;
 }

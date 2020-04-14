@@ -1,13 +1,31 @@
 <template>
   <div>
     <Navbar/>
-    <Network ref="network"
-             class="wrapper"
-             :nodes="nodes"
-             :edges="edges"
-             :options="options"
-             :events="['selectNode']"
-             @select-node="onNodeSelected"/>
+    <div class="wrapper">
+      <div class="left-menu" :class="{'active' : $store.getters.getLeftMenu }">
+        <div v-if="selected.hasOwnProperty('id') && $store.getters.getLeftMenu" class="content">
+          <h2>Selected: {{selected.label}}</h2>
+          <p><span class="bold">ID: </span>{{selected.id}}</p>
+          <p class="bold">Ports:</p>
+          <!--          todo: add Ports table-->
+          <!--          <p v-for="port in selected.ports" :key="port.port_no">-->
+          <!--            {{port}}-->
+          <!--          </p>-->
+        </div>
+        <div v-else-if="$store.getters.getLeftMenu" class="content">
+          <h2>Nothing is selected</h2>
+          <p>Click on device to watch it's info</p>
+        </div>
+      </div>
+      <Network ref="network"
+               class="network"
+               :nodes="nodes"
+               :edges="edges"
+               :options="options"
+               :events="['selectNode', 'deselectNode']"
+               @select-node="onNodeSelected"
+               @deselect-node="onNodeDeselected"/>
+    </div>
   </div>
 </template>
 
@@ -37,7 +55,8 @@
             stabilization: {iterations: 2500}
           },
         },
-        devices: {}
+        devices: {},
+        selected: {}
       }
     },
     async created() {
@@ -56,6 +75,10 @@
 
             if (this.devices[device.dpid] === undefined)
               this.devices[device.dpid] = {
+                id: device.dpid,
+                label: 'Device ' + +device.dpid,
+                image: '/images/router.png',
+                shape: 'image',
                 ports: device.ports
               };
           }
@@ -301,17 +324,44 @@
       onNodeSelected($event) {
         console.log($event)
         //this.nodes.find(e => e.id === $event.nodes[0]).shape = 'circle';
-        console.log(this.devices[$event.nodes[0]])
+        this.selected = this.devices[$event.nodes[0]];
+        console.log(this.selected)
+        this.$store.commit('setLeftMenu', true);
+      },
+      onNodeDeselected($event) {
+        if (!$event.nodes.length) this.selected = {};
       }
     }
   }
 </script>
 
 <style lang="scss" scoped>
+  @import "../assets/styles/colors";
+
   .wrapper {
     margin-top: 60px;
     min-height: calc(100vh - 60px);
-    background-color: #f0f0f0;
     height: calc(100vh - 60px);
+    display: flex;
+  }
+
+  .network {
+    width: 100%;
+    background-color: #f0f0f0;
+  }
+
+  .left-menu {
+    white-space: nowrap;
+    width: 0;
+    background-color: #fff;
+    transition: width 0.2s ease-in-out;
+
+    .content {
+      margin: 15px;
+    }
+  }
+
+  .left-menu.active {
+    width: 800px;
   }
 </style>
