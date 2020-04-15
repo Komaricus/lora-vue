@@ -2,7 +2,7 @@
   <div>
     <Navbar/>
     <div class="wrapper">
-      <div class="left-menu" :class="{'active' : $store.getters.getLeftMenu }">
+      <div class="left-menu" :class="{'active' : showLeftMenu }">
         <device-info :device="selected" @device-selected="onDeviceSelected"/>
       </div>
       <Network ref="network"
@@ -133,6 +133,20 @@
         this.$refs.network.selectNodes([$event.id], true);
         // fire selection event manually
         this.onNodeSelected({nodes: [$event.id]});
+      }
+    },
+    computed: {
+      showLeftMenu() {
+        return this.$store.getters.getLeftMenu;
+      }
+    },
+    watch: {
+      showLeftMenu() {
+
+        setTimeout(() => {
+          this.$refs.network.redraw();
+        }, 200);
+
       }
     }
   }
