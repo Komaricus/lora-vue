@@ -26,7 +26,7 @@
     left: 0;
     position: absolute;
     height: 60px;
-    width: 100%;
+    width: calc(100% - 40px);
     background-color: #FFF;
     box-shadow: $shadow;
     z-index: 1000;
