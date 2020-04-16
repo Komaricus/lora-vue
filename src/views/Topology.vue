@@ -12,10 +12,11 @@
                :nodes="nodes"
                :edges="edges"
                :options="options"
-               :events="['selectNode', 'deselectNode', 'nodesAdd', 'click']"
+               :events="['selectNode', 'deselectNode', 'nodesAdd', 'click', 'edgeAdd']"
                @select-node="onNodeSelected"
                @deselect-node="onNodeDeselected"
-               @nodes-add="onNodeAdded"
+               @nodes-add="addNodeMode = false"
+               @edge-add="addEdgeMode = false"
                @click="onClick"/>
     </div>
     <!--    todo: add snackbar with messages -->
@@ -60,6 +61,29 @@
           },
           manipulation: {
             enabled: false,
+            addNode: (nodeData, callback) => {
+              this.addNodeMode = false;
+              nodeData.id = this.generateNewID();
+              nodeData.label = 'Device ' + +nodeData.id;
+              nodeData.image = '/images/router-unactive.png';
+              nodeData.shape = 'image';
+              nodeData.physics = false;
+              nodeData.x = this.x;
+              nodeData.y = this.y;
+
+              this.nodes.push(nodeData);
+
+              this.devices[nodeData.id] = {
+                id: nodeData.id,
+                label: 'Device ' + +nodeData.id,
+                image: '/images/router-unactive.png',
+                shape: 'image',
+                ports: [],
+                links: []
+              };
+
+              callback(nodeData);
+            },
             addEdge: (edgeData, callback) => {
               this.addEdgeMode = false;
               if (edgeData.from !== edgeData.to) {
@@ -72,11 +96,16 @@
                 };
                 this.edges.push(edgeData);
 
-                this.nodes.find(e => e.id === edgeData.from).image = '/images/router.png';
-                this.nodes.find(e => e.id === edgeData.to).image = '/images/router.png';
+                const indexFrom = this.nodes.findIndex(e => e.id === edgeData.from);
+                this.nodes[indexFrom].image = '/images/router.png';
+                this.nodes[indexFrom].physics = true;
 
-                this.devices[edgeData.from].image =  '/images/router.png';
-                this.devices[edgeData.to].image =  '/images/router.png';
+                const indexTo = this.nodes.findIndex(e => e.id === edgeData.to);
+                this.nodes[indexTo].image = '/images/router.png';
+                this.nodes[indexTo].physics = true;
+
+                this.devices[edgeData.from].image = '/images/router.png';
+                this.devices[edgeData.to].image = '/images/router.png';
 
                 this.devices[edgeData.from].links.push({
                   id: this.devices[edgeData.to].id,
@@ -188,33 +217,6 @@
       onClick($event) {
         this.x = $event.pointer.canvas.x;
         this.y = $event.pointer.canvas.y;
-      },
-      onNodeAdded($event) {
-        if ($event.properties.items.length === 1 && !this.devices[$event.properties.items[0]]) {
-          const dpid = this.generateNewID();
-
-          this.nodes.push({
-            id: dpid,
-            label: 'Device ' + +dpid,
-            image: '/images/router-unactive.png',
-            shape: 'image',
-            physics: false,
-            x: this.x,
-            y: this.y
-          });
-
-          if (this.devices[dpid] === undefined)
-            this.devices[dpid] = {
-              id: dpid,
-              label: 'Device ' + +dpid,
-              image: '/images/router-unactive.png',
-              shape: 'image',
-              ports: [],
-              links: []
-            };
-        }
-
-        this.addNodeMode = false;
       },
       generateNewID() {
         let maxID = 0;
