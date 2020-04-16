@@ -1,7 +1,8 @@
 <template>
   <div>
-    <Navbar @add-node-clicked="onAddNodeButtonClicked"/>
-    <div v-if="addMode" class="add-tooltip">Click anywhere to add device...</div>
+    <Navbar @add-node-clicked="onAddNodeButtonClicked" @add-link-clicked="onAddLinkButtonClicked"/>
+    <div v-if="addNodeMode" class="tooltip">Click anywhere to add device.</div>
+    <div v-if="addEdgeMode" class="tooltip">Click on a device and drag the link to another device to connect them.</div>
     <div class="wrapper">
       <div class="left-menu" :class="{'active' : showLeftMenu }">
         <device-info :device="selected" @device-selected="onDeviceSelected"/>
@@ -17,6 +18,7 @@
                @nodes-add="onNodeAdded"
                @click="onClick"/>
     </div>
+    <!--    todo: add snackbar with messages -->
   </div>
 </template>
 
@@ -56,12 +58,44 @@
             barnesHut: {gravitationalConstant: -30000},
             stabilization: {iterations: 2500}
           },
+          manipulation: {
+            enabled: false,
+            addEdge: (edgeData, callback) => {
+              this.addEdgeMode = false;
+              if (edgeData.from !== edgeData.to) {
+                //todo: prevent more then one link then it exists -> snack error
+                edgeData.arrows = {
+                  to: {
+                    enabled: true,
+                    type: 'triangle'
+                  }
+                };
+                this.edges.push(edgeData);
+
+                this.nodes.find(e => e.id === edgeData.from).image = '/images/router.png';
+                this.nodes.find(e => e.id === edgeData.to).image = '/images/router.png';
+
+                this.devices[edgeData.from].image =  '/images/router.png';
+                this.devices[edgeData.to].image =  '/images/router.png';
+
+                this.devices[edgeData.from].links.push({
+                  id: this.devices[edgeData.to].id,
+                  label: this.devices[edgeData.to].label,
+                  image: this.devices[edgeData.to].image,
+                  shape: this.devices[edgeData.to].shape,
+                  ports: this.devices[edgeData.to].ports
+                });
+                callback(edgeData);
+              }
+            }
+          }
         },
         devices: {},
         selected: {},
         x: 0,
         y: 0,
-        addMode: false
+        addNodeMode: false,
+        addEdgeMode: false
       }
     },
     async created() {
@@ -124,14 +158,14 @@
     methods: {
       onNodeSelected($event) {
         if (this.selected.id !== undefined)
-          this.nodes.find(e => e.id === this.selected.id).image = '/images/router.png';
+          this.nodes.find(e => e.id === this.selected.id).image = this.selected.image;
         this.nodes.find(e => e.id === $event.nodes[0]).image = '/images/router-selected.png';
         this.selected = this.devices[$event.nodes[0]];
         this.$store.commit('setLeftMenu', true);
       },
       onNodeDeselected($event) {
         if (this.nodes.find(e => e.id === this.selected.id))
-          this.nodes.find(e => e.id === this.selected.id).image = '/images/router.png';
+          this.nodes.find(e => e.id === this.selected.id).image = this.selected.image;
         if (!$event.nodes.length) {
           this.selected = {};
         }
@@ -141,9 +175,15 @@
         // fire selection event manually
         this.onNodeSelected({nodes: [$event.id]});
       },
+      onAddLinkButtonClicked() {
+        this.$refs.network.addEdgeMode();
+        this.addNodeMode = false;
+        this.addEdgeMode = true;
+      },
       onAddNodeButtonClicked() {
         this.$refs.network.addNodeMode();
-        this.addMode = true;
+        this.addEdgeMode = false;
+        this.addNodeMode = true;
       },
       onClick($event) {
         this.x = $event.pointer.canvas.x;
@@ -174,7 +214,7 @@
             };
         }
 
-        this.addMode = false;
+        this.addNodeMode = false;
       },
       generateNewID() {
         let maxID = 0;
@@ -234,7 +274,7 @@
     width: 800px;
   }
 
-  .add-tooltip {
+  .tooltip {
     position: absolute;
     right: 20px;
     top: 70px;

@@ -39,7 +39,7 @@
         <th>Device name</th>
         <th>Device ID</th>
       </tr>
-      <tr v-for="(item, index) in $parent.devices" :key="index" @click="$emit('device-selected', item)">
+      <tr v-for="item in $parent.nodes" :key="item.id" @click="$emit('device-selected', item)">
         <td>{{item.label}}</td>
         <td>{{item.id}}</td>
       </tr>
