@@ -3,7 +3,7 @@
     <h2>Selected: {{device.label}}</h2>
     <p><span class="bold">ID: </span>{{device.id}}</p>
     <p class="bold">Ports:</p>
-    <table>
+    <table v-if="device.ports.length">
       <tr>
         <th>HWADDR (MAC)</th>
         <th>Name</th>
@@ -15,8 +15,9 @@
         <td>{{port.port_no}}</td>
       </tr>
     </table>
+    <p v-else>No ports specified</p>
     <p class="bold">Links:</p>
-    <table class="devices-table">
+    <table v-if="device.links.length" class="devices-table">
       <tr>
         <th>Device name</th>
         <th>Device ID</th>
@@ -26,6 +27,7 @@
         <td>{{linkDevice.id}}</td>
       </tr>
     </table>
+    <p v-else>No ports specified</p>
   </div>
   <div v-else-if="$store.getters.getLeftMenu" class="content">
     <h2>Nothing is selected</h2>

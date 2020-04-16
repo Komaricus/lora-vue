@@ -1,6 +1,7 @@
 <template>
   <div>
-    <Navbar/>
+    <Navbar @add-node-clicked="onAddNodeButtonClicked"/>
+    <div v-if="addMode" class="add-tooltip">Click anywhere to add device...</div>
     <div class="wrapper">
       <div class="left-menu" :class="{'active' : showLeftMenu }">
         <device-info :device="selected" @device-selected="onDeviceSelected"/>
@@ -10,9 +11,11 @@
                :nodes="nodes"
                :edges="edges"
                :options="options"
-               :events="['selectNode', 'deselectNode']"
+               :events="['selectNode', 'deselectNode', 'nodesAdd', 'click']"
                @select-node="onNodeSelected"
-               @deselect-node="onNodeDeselected"/>
+               @deselect-node="onNodeDeselected"
+               @nodes-add="onNodeAdded"
+               @click="onClick"/>
     </div>
   </div>
 </template>
@@ -55,7 +58,10 @@
           },
         },
         devices: {},
-        selected: {}
+        selected: {},
+        x: 0,
+        y: 0,
+        addMode: false
       }
     },
     async created() {
@@ -124,7 +130,8 @@
         this.$store.commit('setLeftMenu', true);
       },
       onNodeDeselected($event) {
-        this.nodes.find(e => e.id === this.selected.id).image = '/images/router.png';
+        if (this.nodes.find(e => e.id === this.selected.id))
+          this.nodes.find(e => e.id === this.selected.id).image = '/images/router.png';
         if (!$event.nodes.length) {
           this.selected = {};
         }
@@ -133,6 +140,53 @@
         this.$refs.network.selectNodes([$event.id], true);
         // fire selection event manually
         this.onNodeSelected({nodes: [$event.id]});
+      },
+      onAddNodeButtonClicked() {
+        this.$refs.network.addNodeMode();
+        this.addMode = true;
+      },
+      onClick($event) {
+        this.x = $event.pointer.canvas.x;
+        this.y = $event.pointer.canvas.y;
+      },
+      onNodeAdded($event) {
+        if ($event.properties.items.length === 1 && !this.devices[$event.properties.items[0]]) {
+          const dpid = this.generateNewID();
+
+          this.nodes.push({
+            id: dpid,
+            label: 'Device ' + +dpid,
+            image: '/images/router-unactive.png',
+            shape: 'image',
+            physics: false,
+            x: this.x,
+            y: this.y
+          });
+
+          if (this.devices[dpid] === undefined)
+            this.devices[dpid] = {
+              id: dpid,
+              label: 'Device ' + +dpid,
+              image: '/images/router-unactive.png',
+              shape: 'image',
+              ports: [],
+              links: []
+            };
+        }
+
+        this.addMode = false;
+      },
+      generateNewID() {
+        let maxID = 0;
+        for (const node of this.nodes) {
+          if (parseInt(node.id) > maxID) maxID = parseInt(node.id);
+        }
+
+        maxID++;
+        maxID = String(maxID);
+        maxID = "0".repeat(16 - maxID.length) + maxID;
+
+        return maxID;
       }
     },
     computed: {
@@ -142,11 +196,9 @@
     },
     watch: {
       showLeftMenu() {
-
         setTimeout(() => {
           this.$refs.network.redraw();
         }, 200);
-
       }
     }
   }
@@ -180,5 +232,11 @@
 
   .left-menu.active {
     width: 800px;
+  }
+
+  .add-tooltip {
+    position: absolute;
+    right: 20px;
+    top: 70px;
   }
 </style>

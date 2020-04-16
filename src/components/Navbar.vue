@@ -5,6 +5,10 @@
     </button>
 
     <a href="/"><h1>Lora-Vue</h1></a>
+    <button v-if="$route.name === 'Topology'" style="margin-left: auto" @click="$emit('add-node-clicked')">
+      <span class="mdi mdi-plus"/>
+      Add Device
+    </button>
   </div>
 </template>
 
