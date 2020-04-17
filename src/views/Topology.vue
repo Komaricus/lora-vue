@@ -1,11 +1,12 @@
 <template>
   <div>
-    <Navbar @add-node-clicked="onAddNodeButtonClicked" @add-link-clicked="onAddLinkButtonClicked"/>
+    <Navbar @add-node-clicked="onAddNodeButtonClicked"
+            @add-link-clicked="onAddLinkButtonClicked"/>
     <div v-if="addNodeMode" class="tooltip">Click anywhere to add device.</div>
     <div v-if="addEdgeMode" class="tooltip">Click on a device and drag the link to another device to connect them.</div>
     <div class="wrapper">
       <div class="left-menu" :class="{'active' : showLeftMenu }">
-        <device-info :device="selected" @device-selected="onDeviceSelected"/>
+        <device-info :device="selected" @device-selected="onDeviceSelected" @delete-clicked="onDeleteButtonClicked"/>
       </div>
       <Network ref="network"
                class="network"
@@ -106,6 +107,7 @@
               if (edgeData.from !== edgeData.to
                 && !(this.linksMap[edgeData.from + '_' + edgeData.to]
                   || this.linksMap[edgeData.to + '_' + edgeData.from])) {
+                this.linksMap[edgeData.from + '_' + edgeData.to] = true;
                 edgeData.arrows = {
                   to: {
                     enabled: true,
@@ -249,6 +251,39 @@
       //         console.log(method, params)
       //   }
       // },
+      onDeleteButtonClicked() {
+        this.nodes.splice(this.nodesIndexes[this.selected.id], 1);
+        this.nodesIndexes = {};
+        for (let i = 0; i < this.nodes.length; i++) {
+          this.nodesIndexes[this.nodes[i].id] = i;
+        }
+
+        this.edges = this.edges.filter(e => {
+          return e.from !== this.selected.id && e.to !== this.selected.id
+        });
+
+        this.linksMap = {};
+        for (const link of this.edges) {
+          if (!(this.linksMap[link.from + '_' + link.to]
+            || this.linksMap[link.to + '_' + link.from]))
+            this.linksMap[link.from + '_' + link.to] = true;
+        }
+        delete this.devices[this.selected.id];
+
+        for (const device in this.devices) {
+          this.devices[device].links = this.devices[device].links.filter(e => {return e.id !== this.selected.id});
+          if (!this.devices[device].links.length) {
+            this.devices[device].physics = false;
+            this.devices[device].image = '/images/router-unactive.png';
+            this.nodes[this.nodesIndexes[device]].physics = false;
+            this.nodes[this.nodesIndexes[device]].image = '/images/router-unactive.png';
+          }
+        }
+
+        this.$refs.network.deleteSelected();
+        this.selected = {};
+        //todo: delete API (by network.getSelection)
+      },
       onNodeSelected($event) {
         if (this.selected.id !== undefined)
           this.nodes[this.nodesIndexes[this.selected.id]].image = this.selected.image;

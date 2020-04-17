@@ -31,7 +31,10 @@
         <td>{{linkDevice.dstPort}}</td>
       </tr>
     </table>
-    <p v-else>No ports specified</p>
+    <p v-else>No links specified</p>
+    <button class="delete-button" @click="$emit('delete-clicked')">
+      Delete
+    </button>
   </div>
   <div v-else-if="$store.getters.getLeftMenu" class="content">
     <h2>Nothing is selected</h2>
@@ -92,5 +95,15 @@
     tr:not(:first-child):hover {
       background-color: $light-lime;
     }
+  }
+
+  .delete-button {
+    color: $danger;
+    border: 2px solid $danger;
+  }
+
+  .delete-button:hover {
+    color: white;
+    background-color: $danger;
   }
 </style>
