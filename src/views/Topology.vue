@@ -101,18 +101,18 @@
                 })
               }
 
-              // axios.post(`${config.api}/switch/add/s${+nodeData.id}`, {
-              //     params: {
-              //       delay: "100ms",
-              //       bw: 50
-              //     }
-              //   })
-              //   .then(response => {
-              //     console.log(response)
-              //   })
-              //   .catch(error => {
-              //     console.error(error)
-              //   });
+              axios.post(`${config.api}/switch/add/s${+nodeData.id}`, {
+                  params: {
+                    delay: "100ms",
+                    bw: 50
+                  }
+                })
+                .then(response => {
+                  console.log(response)
+                })
+                .catch(error => {
+                  console.error(error)
+                });
               this.$refs.network.disableEditMode();
               callback(nodeData);
             },
@@ -121,18 +121,21 @@
               if (this.getDeviceEmptyPortIndex(edgeData.from) === -1) {
                 this.message = `Device ${+edgeData.from} has no empty ports!`
                 this.snackbar = true;
+                this.$refs.network.disableEditMode();
                 return;
               }
 
               if (this.getDeviceEmptyPortIndex(edgeData.to) === -1) {
                 this.message = `Device ${+edgeData.to} has no empty ports!`
                 this.snackbar = true;
+                this.$refs.network.disableEditMode();
                 return;
               }
 
               if (edgeData.from === edgeData.to) {
                 this.message = 'Cyclic links ara forbidden!';
                 this.snackbar = true;
+                this.$refs.network.disableEditMode();
                 return;
               }
 
@@ -140,6 +143,7 @@
                 || this.linksMap[edgeData.to + '_' + edgeData.from]) {
                 this.message = 'Link already exists!';
                 this.snackbar = true;
+                this.$refs.network.disableEditMode();
                 return;
               }
 
@@ -187,18 +191,18 @@
                 dstPort: fromPort
               });
 
-              // axios.get(`${config.api}/link/add`, {
-              //     params: {
-              //       a: 's' + +edgeData.from,
-              //       b: 's' + +edgeData.to
-              //     }
-              //   })
-              //   .then(response => {
-              //     console.log(response)
-              //   })
-              //   .catch(error => {
-              //     console.error(error)
-              //   });
+              axios.get(`${config.api}/link/add`, {
+                  params: {
+                    a: 's' + +edgeData.from,
+                    b: 's' + +edgeData.to
+                  }
+                })
+                .then(response => {
+                  console.log(response)
+                })
+                .catch(error => {
+                  console.error(error)
+                });
 
               callback(edgeData);
 
@@ -293,8 +297,19 @@
         });
 
       this.options.physics.enabled = true;
+      this.connect();
     },
     methods: {
+      connect() {
+        this.socket = new WebSocket("ws://localhost:5555/v1.0/topology/ws");
+        this.socket.onopen = () => {
+          console.log("connected to ws://localhost:5555/v1.0/topology/ws");
+
+          this.socket.onmessage = ({data}) => {
+            console.log(data)
+          };
+        };
+      },
       getDeviceEmptyPortIndex(deviceID) {
         for (let i = 0; i < this.devices[deviceID].ports.length; i++) {
           const portName = this.devices[deviceID].ports[i].name;

@@ -32,9 +32,28 @@
       </tr>
     </table>
     <p v-else>No links specified</p>
-    <button class="delete-button" @click="$emit('delete-clicked')">
-      Delete
-    </button>
+    <div v-if="!device.hasOwnProperty('link')" class="ping">
+      <p class="bold">Ping:</p>
+      <p>Type device name below. Example: <span class="bold">s1 - for Device 1</span></p>
+      <div style="width: 100%">
+        <label>
+          ping s{{+device.id}}
+          <input class="ping-input" type="text" v-model="ping">
+        </label>
+        <button @click="doPing" style="margin-left: 20px">
+          Ping
+        </button>
+      </div>
+      <div class="ping-output">
+        <div v-if="loading" style="margin: 20px auto; text-align: center">
+          <span class="mdi mdi-loading mdi-spin" style="color: #42b983;"/>
+        </div>
+        <div v-else v-html="output"/>
+      </div>
+      <button class="delete-button" @click="$emit('delete-clicked')">
+        Delete
+      </button>
+    </div>
   </div>
   <div v-else-if="$store.getters.getLeftMenu" class="content">
     <h2>Nothing is selected</h2>
@@ -55,6 +74,9 @@
 </template>
 
 <script>
+  import axios from "axios"
+  import config from "@/config"
+
   export default {
     name: "device-info",
     props: {
@@ -63,7 +85,35 @@
       }
     },
     data() {
-      return {}
+      return {
+        ping: '',
+        loading: false,
+        output: ''
+      }
+    },
+    watch: {
+      device() {
+        this.ping = '';
+        this.loading = false;
+        this.output = '';
+      }
+    },
+    methods: {
+      async doPing() {
+        this.loading = true;
+        await axios.post(`${config.api}/nodes/s${+this.device.id}/cmd`, 'ping ' + this.ping, {
+            headers: {'Content-Type': 'text/plain'}
+          })
+          .then(response => {
+            this.output = response.data.replace('data.', `data.<br>`).split('ms').join(`ms<br>`).replace('---', `<br>---`).replace('statistics ---', `statistics ---<br>`);
+          })
+          .catch(error => {
+            console.error(error)
+          })
+          .finally(() => {
+            this.loading = false;
+          });
+      }
     }
   }
 </script>
@@ -100,10 +150,29 @@
   .delete-button {
     color: $danger;
     border: 2px solid $danger;
+    margin-top: 20px;
   }
 
   .delete-button:hover {
     color: white;
     background-color: $danger;
+  }
+
+  .ping {
+    margin: 10px 0;
+  }
+
+  .ping-input {
+    margin-top: 10px;
+    font-size: 16px;
+    border: 1px solid $lime;
+    border-radius: 5px;
+    padding: 2px;
+    width: 300px;
+  }
+
+  .ping-output {
+    max-width: 600px;
+    white-space: normal;
   }
 </style>
