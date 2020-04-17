@@ -13,14 +13,15 @@
                :nodes="nodes"
                :edges="edges"
                :options="options"
-               :events="['selectNode', 'deselectNode', 'nodesAdd', 'click', 'edgeAdd']"
+               :events="['selectNode', 'deselectNode', 'nodesAdd', 'click', 'edgeAdd', 'selectEdge', 'deselectEdge']"
+               @select-edge="onEdgeSelected"
+               @deselect-edge="onEdgeDeselected"
                @select-node="onNodeSelected"
                @deselect-node="onNodeDeselected"
                @nodes-add="addNodeMode = false"
                @edge-add="addEdgeMode = false"
                @click="onClick"/>
     </div>
-    <!--    todo: add snackbar with messages -->
   </div>
 </template>
 
@@ -86,27 +87,42 @@
                 links: []
               };
 
-              axios.post(`${config.api}/switch/add/s${+nodeData.id}`, {
-                  params: {
-                    delay: "100ms",
-                    bw: 50
-                  }
+              for (let i = 0; i < 4; i++) {
+                this.devices[nodeData.id].ports.push({
+                  "hw_addr": "XX:XX:XX:XX:XX:XX".replace(/X/g, function () {
+                    return "0123456789abcdef".charAt(Math.floor(Math.random() * 16))
+                  }),
+                  name: `s${+nodeData.id}-eth${i + 1}`,
+                  "port_no": `0000000${i + 1}`,
+                  dpid: nodeData.id
                 })
-                .then(response => {
-                  console.log(response)
-                })
-                .catch(error => {
-                  console.error(error)
-                });
+              }
+
+              // axios.post(`${config.api}/switch/add/s${+nodeData.id}`, {
+              //     params: {
+              //       delay: "100ms",
+              //       bw: 50
+              //     }
+              //   })
+              //   .then(response => {
+              //     console.log(response)
+              //   })
+              //   .catch(error => {
+              //     console.error(error)
+              //   });
               this.$refs.network.disableEditMode();
               callback(nodeData);
             },
             addEdge: (edgeData, callback) => {
               this.addEdgeMode = false;
+              console.log(this.getDeviceEmptyPortIndex(edgeData.from));
+              console.log(this.getDeviceEmptyPortIndex(edgeData.to));
 
               if (edgeData.from !== edgeData.to
                 && !(this.linksMap[edgeData.from + '_' + edgeData.to]
-                  || this.linksMap[edgeData.to + '_' + edgeData.from])) {
+                  || this.linksMap[edgeData.to + '_' + edgeData.from])
+                  && this.getDeviceEmptyPortIndex(edgeData.from) !== -1
+                  && this.getDeviceEmptyPortIndex(edgeData.to) !== -1) {
                 this.linksMap[edgeData.from + '_' + edgeData.to] = true;
                 edgeData.arrows = {
                   to: {
@@ -120,6 +136,9 @@
                 };
                 this.edges.push(edgeData);
 
+                const fromPort = this.devices[edgeData.from].ports[this.getDeviceEmptyPortIndex(edgeData.from)].name;
+                const toPort = this.devices[edgeData.to].ports[this.getDeviceEmptyPortIndex(edgeData.to)].name;
+
                 const indexFrom = this.nodesIndexes[edgeData.from];
                 this.nodes[indexFrom].image = '/images/router.png';
                 this.nodes[indexFrom].physics = true;
@@ -129,28 +148,37 @@
                 this.nodes[indexTo].physics = true;
 
                 this.devices[edgeData.from].image = '/images/router.png';
+                this.devices[edgeData.from].physics = true;
+
                 this.devices[edgeData.to].image = '/images/router.png';
+                this.devices[edgeData.to].physics = true;
 
                 this.devices[edgeData.from].links.push({
                   id: this.devices[edgeData.to].id,
                   label: this.devices[edgeData.to].label,
-                  image: this.devices[edgeData.to].image,
-                  shape: this.devices[edgeData.to].shape,
-                  ports: this.devices[edgeData.to].ports
+                  srcPort: fromPort,
+                  dstPort: toPort
                 });
 
-                axios.get(`${config.api}/link/add`, {
-                    params: {
-                      a: 's' + +edgeData.from,
-                      b: 's' + +edgeData.to
-                    }
-                  })
-                  .then(response => {
-                    console.log(response)
-                  })
-                  .catch(error => {
-                    console.error(error)
-                  });
+                this.devices[edgeData.to].links.push({
+                  id: this.devices[edgeData.from].id,
+                  label: this.devices[edgeData.from].label,
+                  srcPort: toPort,
+                  dstPort: fromPort
+                });
+
+                // axios.get(`${config.api}/link/add`, {
+                //     params: {
+                //       a: 's' + +edgeData.from,
+                //       b: 's' + +edgeData.to
+                //     }
+                //   })
+                //   .then(response => {
+                //     console.log(response)
+                //   })
+                //   .catch(error => {
+                //     console.error(error)
+                //   });
 
                 callback(edgeData);
               }
@@ -238,45 +266,78 @@
           this.nodes = mocks.nodes;
           this.edges = mocks.edges;
           this.devices = mocks.devices;
+          this.linksMap = mocks.linksMap;
+          this.nodesIndexes = mocks.nodesIndexes;
         });
 
       this.options.physics.enabled = true;
     },
     methods: {
-      // rpc(method, params) {
-      //   switch (method) {
-      //     case 'event_switch_enter':
-      //       break;
-      //       default:
-      //         console.log(method, params)
-      //   }
-      // },
+      getDeviceEmptyPortIndex(deviceID) {
+        for (let i = 0; i < this.devices[deviceID].ports.length; i++) {
+          const portName = this.devices[deviceID].ports[i].name;
+          if (!this.devices[deviceID].links.some(e => e.srcPort === portName)) return i;
+        }
+
+        return -1;
+      },
       onDeleteButtonClicked() {
-        this.nodes.splice(this.nodesIndexes[this.selected.id], 1);
-        this.nodesIndexes = {};
-        for (let i = 0; i < this.nodes.length; i++) {
-          this.nodesIndexes[this.nodes[i].id] = i;
-        }
+        if (this.selected.link) {
+          this.edges = this.edges.filter(e => {
+            return e.id !== this.selected.id
+          });
 
-        this.edges = this.edges.filter(e => {
-          return e.from !== this.selected.id && e.to !== this.selected.id
-        });
+          this.linksMap = {};
+          for (const link of this.edges) {
+            if (!(this.linksMap[link.from + '_' + link.to]
+              || this.linksMap[link.to + '_' + link.from]))
+              this.linksMap[link.from + '_' + link.to] = true;
+          }
 
-        this.linksMap = {};
-        for (const link of this.edges) {
-          if (!(this.linksMap[link.from + '_' + link.to]
-            || this.linksMap[link.to + '_' + link.from]))
-            this.linksMap[link.from + '_' + link.to] = true;
-        }
-        delete this.devices[this.selected.id];
+          this.devices[this.selected.from].links = this.devices[this.selected.from].links.filter(e => {
+            return (e.id !== this.selected.from && e.id !== this.selected.to)
+          });
+          this.devices[this.selected.to].links = this.devices[this.selected.to].links.filter(e => {
+            return (e.id !== this.selected.from && e.id !== this.selected.to)
+          });
 
-        for (const device in this.devices) {
-          this.devices[device].links = this.devices[device].links.filter(e => {return e.id !== this.selected.id});
-          if (!this.devices[device].links.length) {
-            this.devices[device].physics = false;
-            this.devices[device].image = '/images/router-unactive.png';
-            this.nodes[this.nodesIndexes[device]].physics = false;
-            this.nodes[this.nodesIndexes[device]].image = '/images/router-unactive.png';
+          for (const device in this.devices) {
+            if (!this.devices[device].links.length) {
+              this.devices[device].physics = false;
+              this.devices[device].image = '/images/router-unactive.png';
+              this.nodes[this.nodesIndexes[device]].physics = false;
+              this.nodes[this.nodesIndexes[device]].image = '/images/router-unactive.png';
+            }
+          }
+        } else {
+          this.nodes.splice(this.nodesIndexes[this.selected.id], 1);
+          this.nodesIndexes = {};
+          for (let i = 0; i < this.nodes.length; i++) {
+            this.nodesIndexes[this.nodes[i].id] = i;
+          }
+
+          this.edges = this.edges.filter(e => {
+            return e.from !== this.selected.id && e.to !== this.selected.id
+          });
+
+          this.linksMap = {};
+          for (const link of this.edges) {
+            if (!(this.linksMap[link.from + '_' + link.to]
+              || this.linksMap[link.to + '_' + link.from]))
+              this.linksMap[link.from + '_' + link.to] = true;
+          }
+          delete this.devices[this.selected.id];
+
+          for (const device in this.devices) {
+            this.devices[device].links = this.devices[device].links.filter(e => {
+              return e.id !== this.selected.id
+            });
+            if (!this.devices[device].links.length) {
+              this.devices[device].physics = false;
+              this.devices[device].image = '/images/router-unactive.png';
+              this.nodes[this.nodesIndexes[device]].physics = false;
+              this.nodes[this.nodesIndexes[device]].image = '/images/router-unactive.png';
+            }
           }
         }
 
@@ -284,18 +345,61 @@
         this.selected = {};
         //todo: delete API (by network.getSelection)
       },
+      onEdgeSelected($event) {
+        console.log('edgeSelected', $event);
+
+        if ($event.nodes.length) return;
+
+        if (this.selected.id !== undefined && !this.selected.link)
+          this.nodes[this.nodesIndexes[this.selected.id]].image = this.selected.image;
+
+        const link = Object.assign(this.edges.find(e => e.id === $event.edges[0]));
+        link.ports = [];
+        link.links = [];
+        link.link = true;
+
+        for (const device in this.devices) {
+          if (this.devices[device].id === link.from
+            || this.devices[device].id === link.to) {
+            link.links.push(this.devices[device]);
+            const temp = this.devices[device].links.find(e => e.id === link.from || e.id === link.to);
+            if (temp !== undefined) {
+              const srcPort = temp.srcPort;
+              const port = this.devices[device].ports.find(e => e.name === srcPort);
+              if (port !== undefined)
+                link.ports.push(port);
+            }
+          }
+        }
+        if (link.ports.length === 2) link.label = `Link ${link.ports[0].name}_${link.ports[1].name}`;
+        else link.label = 'Link ';
+
+        this.selected = link;
+
+        this.$store.commit('setLeftMenu', true);
+      },
+      onEdgeDeselected($event) {
+        console.log('edgeDeselected', $event);
+        if ($event.edges.length) this.onEdgeSelected($event);
+        else if (this.selected.link) this.selected = {};
+      },
       onNodeSelected($event) {
-        if (this.selected.id !== undefined)
+        console.log('nodeSelected', $event);
+        if (this.selected.id !== undefined && !this.selected.link)
           this.nodes[this.nodesIndexes[this.selected.id]].image = this.selected.image;
         this.nodes[this.nodesIndexes[$event.nodes[0]]].image = '/images/router-selected.png';
         this.selected = this.devices[$event.nodes[0]];
         this.$store.commit('setLeftMenu', true);
       },
       onNodeDeselected($event) {
-        if (this.nodes[this.nodesIndexes[this.selected.id]])
+        console.log('nodeDeselected', $event);
+        if (!this.selected.link && this.nodes[this.nodesIndexes[this.selected.id]])
           this.nodes[this.nodesIndexes[this.selected.id]].image = this.selected.image;
-        if (!$event.nodes.length) {
+        if (!$event.nodes.length && !$event.edges.length) {
           this.selected = {};
+        }
+        if ($event.edges.length) {
+          this.onEdgeSelected($event);
         }
       },
       onDeviceSelected($event) {

@@ -1,7 +1,7 @@
 <template>
   <div v-if="device.hasOwnProperty('id') && $store.getters.getLeftMenu" class="content">
     <h2>Selected: {{device.label}}</h2>
-    <p><span class="bold">ID: </span>{{device.id}}</p>
+    <p v-if="!device.hasOwnProperty('link')"><span class="bold">ID: </span>{{device.id}}</p>
     <p class="bold">Ports:</p>
     <table v-if="device.ports.length">
       <tr>
@@ -21,14 +21,14 @@
       <tr>
         <th>Device name</th>
         <th>Device ID</th>
-        <th>Source port</th>
-        <th>Dest. port</th>
+        <th v-if="!device.hasOwnProperty('link')">Source port</th>
+        <th v-if="!device.hasOwnProperty('link')">Dest. port</th>
       </tr>
       <tr v-for="(linkDevice, index) in device.links" :key="index" @click="$emit('device-selected', linkDevice)">
         <td>{{linkDevice.label}}</td>
         <td>{{linkDevice.id}}</td>
-        <td>{{linkDevice.srcPort}}</td>
-        <td>{{linkDevice.dstPort}}</td>
+        <td v-if="!device.hasOwnProperty('link')">{{linkDevice.srcPort}}</td>
+        <td v-if="!device.hasOwnProperty('link')">{{linkDevice.dstPort}}</td>
       </tr>
     </table>
     <p v-else>No links specified</p>
