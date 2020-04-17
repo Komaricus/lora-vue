@@ -62,11 +62,11 @@
         </div>
         <div v-else v-html="output"/>
       </div>
-
-      <button class="delete-button" @click="$emit('delete-clicked')">
-        Delete
-      </button>
     </div>
+
+    <button class="delete-button" @click="$emit('delete-clicked')">
+      Delete
+    </button>
   </div>
   <div v-else-if="$store.getters.getLeftMenu" class="content">
     <h2>Nothing is selected</h2>
