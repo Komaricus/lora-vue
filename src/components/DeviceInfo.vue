@@ -21,10 +21,14 @@
       <tr>
         <th>Device name</th>
         <th>Device ID</th>
+        <th>Source port</th>
+        <th>Destination port</th>
       </tr>
       <tr v-for="(linkDevice, index) in device.links" :key="index" @click="$emit('device-selected', linkDevice)">
         <td>{{linkDevice.label}}</td>
         <td>{{linkDevice.id}}</td>
+        <td>{{linkDevice.srcPort}}</td>
+        <td>{{linkDevice.dstPort}}</td>
       </tr>
     </table>
     <p v-else>No ports specified</p>

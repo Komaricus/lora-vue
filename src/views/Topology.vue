@@ -56,6 +56,7 @@
             color: 'gray'
           },
           physics: {
+            enabled: false,
             barnesHut: {gravitationalConstant: -30000},
             stabilization: {iterations: 2500}
           },
@@ -63,6 +64,7 @@
             enabled: false,
             addNode: (nodeData, callback) => {
               this.addNodeMode = false;
+              this.$refs.network.disableEditMode();
               nodeData.id = this.generateNewID();
               nodeData.label = 'Device ' + +nodeData.id;
               nodeData.image = '/images/router-unactive.png';
@@ -82,14 +84,33 @@
                 links: []
               };
 
+              axios.post(`${config.api}/switch/add/s${+nodeData.id}`, {
+                  params: {
+                    delay: "100ms",
+                    bw: 50
+                  }
+                })
+                .then(response => {
+                  console.log(response)
+                })
+                .catch(error => {
+                  console.error(error)
+                });
+
               callback(nodeData);
             },
             addEdge: (edgeData, callback) => {
               this.addEdgeMode = false;
-              if (edgeData.from !== edgeData.to) {
-                //todo: prevent more then one link then it exists -> snack error
+              this.$refs.network.disableEditMode();
+              if (edgeData.from !== edgeData.to
+                && !(this.linksMap[edgeData.from + '_' + edgeData.to]
+                  || this.linksMap[edgeData.to + '_' + edgeData.from])) {
                 edgeData.arrows = {
                   to: {
+                    enabled: true,
+                    type: 'triangle'
+                  },
+                  from: {
                     enabled: true,
                     type: 'triangle'
                   }
@@ -114,8 +135,23 @@
                   shape: this.devices[edgeData.to].shape,
                   ports: this.devices[edgeData.to].ports
                 });
+
+                axios.get(`${config.api}/link/add`, {
+                    params: {
+                      a: 's' + +edgeData.from,
+                      b: 's' + +edgeData.to
+                    }
+                  })
+                  .then(response => {
+                    console.log(response)
+                  })
+                  .catch(error => {
+                    console.error(error)
+                  });
+
                 callback(edgeData);
               }
+
             }
           }
         },
@@ -124,7 +160,8 @@
         x: 0,
         y: 0,
         addNodeMode: false,
-        addEdgeMode: false
+        addEdgeMode: false,
+        linksMap: {}
       }
     },
     async created() {
@@ -153,28 +190,34 @@
           }
 
           for (const link of responses[1].data) {
-            this.edges.push({
-              from: link.src.dpid,
-              to: link.dst.dpid,
-              length: 300,
-              arrows: {
-                to: {
-                  enabled: true,
-                  type: 'triangle'
+            if (!(this.linksMap[link.src.dpid + '_' + link.dst.dpid] || this.linksMap[link.dst.dpid + '_' + link.src.dpid])) {
+              this.linksMap[link.src.dpid + '_' + link.dst.dpid] = true;
+              this.edges.push({
+                from: link.src.dpid,
+                to: link.dst.dpid,
+                length: 300,
+                arrows: {
+                  to: {
+                    enabled: true,
+                    type: 'triangle'
+                  },
+                  from: {
+                    enabled: true,
+                    type: 'triangle'
+                  }
                 }
-              }
-            });
+              });
+            }
 
             this.devices[link.src.dpid].links.push({
               id: this.devices[link.dst.dpid].id,
               label: this.devices[link.dst.dpid].label,
-              image: this.devices[link.dst.dpid].image,
-              shape: this.devices[link.dst.dpid].shape,
-              ports: this.devices[link.dst.dpid].ports
+              srcPort: link.src.name,
+              dstPort: link.dst.name,
             });
           }
 
-          this.options.physics.enabled = true;
+
         })
         .catch(error => {
           console.error(error);
@@ -182,9 +225,21 @@
           this.nodes = mocks.nodes;
           this.edges = mocks.edges;
           this.devices = mocks.devices;
-        })
+        });
+
+      this.options.physics.enabled = true;
+
+      console.log(JSON.stringify(this.devices));
     },
     methods: {
+      // rpc(method, params) {
+      //   switch (method) {
+      //     case 'event_switch_enter':
+      //       break;
+      //       default:
+      //         console.log(method, params)
+      //   }
+      // },
       onNodeSelected($event) {
         if (this.selected.id !== undefined)
           this.nodes.find(e => e.id === this.selected.id).image = this.selected.image;
