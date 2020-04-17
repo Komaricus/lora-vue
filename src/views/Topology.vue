@@ -368,14 +368,12 @@
         //todo: delete API (by network.getSelection)
       },
       onEdgeSelected($event) {
-        console.log('edgeSelected', $event);
-
         if ($event.nodes.length) return;
 
         if (this.selected.id !== undefined && !this.selected.link)
           this.nodes[this.nodesIndexes[this.selected.id]].image = this.selected.image;
 
-        const link = Object.assign(this.edges.find(e => e.id === $event.edges[0]));
+        const link = Object.assign({}, this.edges.find(e => e.id === $event.edges[0]));
         link.ports = [];
         link.links = [];
         link.link = true;
@@ -401,12 +399,10 @@
         this.$store.commit('setLeftMenu', true);
       },
       onEdgeDeselected($event) {
-        console.log('edgeDeselected', $event);
         if ($event.edges.length) this.onEdgeSelected($event);
         else if (this.selected.link) this.selected = {};
       },
       onNodeSelected($event) {
-        console.log('nodeSelected', $event);
         if (this.selected.id !== undefined && !this.selected.link)
           this.nodes[this.nodesIndexes[this.selected.id]].image = this.selected.image;
         this.nodes[this.nodesIndexes[$event.nodes[0]]].image = '/images/router-selected.png';
@@ -414,7 +410,6 @@
         this.$store.commit('setLeftMenu', true);
       },
       onNodeDeselected($event) {
-        console.log('nodeDeselected', $event);
         if (!this.selected.link && this.nodes[this.nodesIndexes[this.selected.id]])
           this.nodes[this.nodesIndexes[this.selected.id]].image = this.selected.image;
         if (!$event.nodes.length && !$event.edges.length) {
