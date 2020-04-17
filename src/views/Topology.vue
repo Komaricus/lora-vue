@@ -509,6 +509,7 @@
     width: 0;
     background-color: #fff;
     transition: width 0.2s ease-in-out;
+    overflow-y: scroll;
 
     .content {
       margin: 15px;

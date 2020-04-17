@@ -32,6 +32,17 @@
       </tr>
     </table>
     <p v-else>No links specified</p>
+    <div class="charts">
+      <p class="bold">Charts</p>
+      <button class="text" @click="chartType = 'battery'" :class="{active: chartType === 'battery'}">
+        Battery
+      </button>
+      <button class="text" @click="chartType = 'load'" :class="{active: chartType === 'load'}">
+        Load
+      </button>
+      <battery-chart v-if="!device.hasOwnProperty('link') && chartType === 'battery'" :device="device" style="margin: 10px 0"/>
+      <load-chart v-if="!device.hasOwnProperty('link') && chartType === 'load'" :device="device" style="margin: 10px 0"/>
+    </div>
     <div v-if="!device.hasOwnProperty('link')" class="ping">
       <p class="bold">Ping:</p>
       <p>Type device name below. Example: <span class="bold">s1 - for Device 1</span></p>
@@ -44,12 +55,14 @@
           Ping
         </button>
       </div>
+
       <div class="ping-output">
         <div v-if="loading" style="margin: 20px auto; text-align: center">
           <span class="mdi mdi-loading mdi-spin" style="color: #42b983;"/>
         </div>
         <div v-else v-html="output"/>
       </div>
+
       <button class="delete-button" @click="$emit('delete-clicked')">
         Delete
       </button>
@@ -76,6 +89,8 @@
 <script>
   import axios from "axios"
   import config from "@/config"
+  import BatteryChart from "./BatteryChart";
+  import LoadChart from "./LoadChart";
 
   export default {
     name: "device-info",
@@ -84,11 +99,16 @@
         type: Object
       }
     },
+    components: {
+      "battery-chart": BatteryChart,
+      "load-chart": LoadChart
+    },
     data() {
       return {
         ping: '',
         loading: false,
-        output: ''
+        output: '',
+        chartType: ''
       }
     },
     watch: {
@@ -96,6 +116,7 @@
         this.ping = '';
         this.loading = false;
         this.output = '';
+        this.chartType = '';
       }
     },
     methods: {
@@ -174,5 +195,15 @@
   .ping-output {
     max-width: 600px;
     white-space: normal;
+  }
+
+  .charts {
+    margin: 10px 0;
+  }
+
+  .active {
+    border-bottom-left-radius: 0;
+    border-bottom-right-radius: 0;
+    border-bottom: 2px solid $lime;
   }
 </style>
