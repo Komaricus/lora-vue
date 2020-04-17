@@ -64,7 +64,7 @@
             enabled: false,
             addNode: (nodeData, callback) => {
               this.addNodeMode = false;
-              this.$refs.network.disableEditMode();
+
               nodeData.id = this.generateNewID();
               nodeData.label = 'Device ' + +nodeData.id;
               nodeData.image = '/images/router-unactive.png';
@@ -74,6 +74,7 @@
               nodeData.y = this.y;
 
               this.nodes.push(nodeData);
+              this.nodesIndexes[nodeData.id] = this.nodes.length - 1;
 
               this.devices[nodeData.id] = {
                 id: nodeData.id,
@@ -96,12 +97,12 @@
                 .catch(error => {
                   console.error(error)
                 });
-
+              this.$refs.network.disableEditMode();
               callback(nodeData);
             },
             addEdge: (edgeData, callback) => {
               this.addEdgeMode = false;
-              this.$refs.network.disableEditMode();
+
               if (edgeData.from !== edgeData.to
                 && !(this.linksMap[edgeData.from + '_' + edgeData.to]
                   || this.linksMap[edgeData.to + '_' + edgeData.from])) {
@@ -121,7 +122,7 @@
                 this.nodes[indexFrom].image = '/images/router.png';
                 this.nodes[indexFrom].physics = true;
 
-                const indexTo = this.nodesIndexes(edgeData.to);
+                const indexTo = this.nodesIndexes[edgeData.to];
                 this.nodes[indexTo].image = '/images/router.png';
                 this.nodes[indexTo].physics = true;
 
@@ -151,7 +152,7 @@
 
                 callback(edgeData);
               }
-
+              this.$refs.network.disableEditMode();
             }
           }
         },
