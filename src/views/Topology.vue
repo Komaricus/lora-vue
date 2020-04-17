@@ -71,35 +71,7 @@
               this.addNodeMode = false;
 
               nodeData.id = this.generateNewID();
-              nodeData.label = 'Device ' + +nodeData.id;
-              nodeData.image = '/images/router-unactive.png';
-              nodeData.shape = 'image';
-              nodeData.physics = false;
-              nodeData.x = this.x;
-              nodeData.y = this.y;
-
-              this.nodes.push(nodeData);
-              this.nodesIndexes[nodeData.id] = this.nodes.length - 1;
-
-              this.devices[nodeData.id] = {
-                id: nodeData.id,
-                label: 'Device ' + +nodeData.id,
-                image: '/images/router-unactive.png',
-                shape: 'image',
-                ports: [],
-                links: []
-              };
-
-              for (let i = 0; i < 4; i++) {
-                this.devices[nodeData.id].ports.push({
-                  "hw_addr": "XX:XX:XX:XX:XX:XX".replace(/X/g, function () {
-                    return "0123456789abcdef".charAt(Math.floor(Math.random() * 16))
-                  }),
-                  name: `s${+nodeData.id}-eth${i + 1}`,
-                  "port_no": `0000000${i + 1}`,
-                  dpid: nodeData.id
-                })
-              }
+              this.addDevice(nodeData);
 
               axios.post(`${config.api}/switch/add/s${+nodeData.id}`, {
                   params: {
@@ -113,6 +85,7 @@
                 .catch(error => {
                   console.error(error)
                 });
+
               this.$refs.network.disableEditMode();
               callback(nodeData);
             },
@@ -306,9 +279,48 @@
           console.log("connected to ws://localhost:5555/v1.0/topology/ws");
 
           this.socket.onmessage = ({data}) => {
-            console.log(data)
+            const parsedData = JSON.parse(data);
+            switch (parsedData.method) {
+              case 'event_switch_enter':
+                this.addDevice({id: parsedData.params[0].dpid});
+                break;
+              default:
+                console.log(parsedData);
+                break;
+            }
           };
         };
+      },
+      addDevice(nodeData) {
+        nodeData.label = 'Device ' + +nodeData.id;
+        nodeData.image = '/images/router-unactive.png';
+        nodeData.shape = 'image';
+        nodeData.physics = false;
+        nodeData.x = this.x;
+        nodeData.y = this.y;
+
+        this.nodes.push(nodeData);
+        this.nodesIndexes[nodeData.id] = this.nodes.length - 1;
+
+        this.devices[nodeData.id] = {
+          id: nodeData.id,
+          label: 'Device ' + +nodeData.id,
+          image: '/images/router-unactive.png',
+          shape: 'image',
+          ports: [],
+          links: []
+        };
+
+        for (let i = 0; i < 4; i++) {
+          this.devices[nodeData.id].ports.push({
+            "hw_addr": "XX:XX:XX:XX:XX:XX".replace(/X/g, function () {
+              return "0123456789abcdef".charAt(Math.floor(Math.random() * 16))
+            }),
+            name: `s${+nodeData.id}-eth${i + 1}`,
+            "port_no": `0000000${i + 1}`,
+            dpid: nodeData.id
+          })
+        }
       },
       getDeviceEmptyPortIndex(deviceID) {
         for (let i = 0; i < this.devices[deviceID].ports.length; i++) {
