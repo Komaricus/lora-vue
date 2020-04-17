@@ -117,11 +117,11 @@
                 };
                 this.edges.push(edgeData);
 
-                const indexFrom = this.nodes.findIndex(e => e.id === edgeData.from);
+                const indexFrom = this.nodesIndexes[edgeData.from];
                 this.nodes[indexFrom].image = '/images/router.png';
                 this.nodes[indexFrom].physics = true;
 
-                const indexTo = this.nodes.findIndex(e => e.id === edgeData.to);
+                const indexTo = this.nodesIndexes(edgeData.to);
                 this.nodes[indexTo].image = '/images/router.png';
                 this.nodes[indexTo].physics = true;
 
@@ -161,7 +161,8 @@
         y: 0,
         addNodeMode: false,
         addEdgeMode: false,
-        linksMap: {}
+        linksMap: {},
+        nodesIndexes: {}
       }
     },
     async created() {
@@ -170,13 +171,15 @@
 
       await axios.all([switches, links])
         .then(responses => {
-          for (const device of responses[0].data) {
+          for (let i = 0; i < responses[0].data.length; i++) {
+            const device = responses[0].data[i];
             this.nodes.push({
               id: device.dpid,
               label: 'Device ' + +device.dpid,
               image: '/images/router.png',
               shape: 'image'
             });
+            this.nodesIndexes[device.dpid] = i;
 
             if (this.devices[device.dpid] === undefined)
               this.devices[device.dpid] = {
@@ -217,7 +220,14 @@
             });
           }
 
-
+          for (const device in this.devices) {
+            if (!this.devices[device].links.length) {
+              this.devices[device].physics = false;
+              this.devices[device].image = '/images/router-unactive.png';
+              this.nodes[this.nodesIndexes[device]].physics = false;
+              this.nodes[this.nodesIndexes[device]].image = '/images/router-unactive.png';
+            }
+          }
         })
         .catch(error => {
           console.error(error);
@@ -228,8 +238,6 @@
         });
 
       this.options.physics.enabled = true;
-
-      console.log(JSON.stringify(this.devices));
     },
     methods: {
       // rpc(method, params) {
@@ -242,14 +250,14 @@
       // },
       onNodeSelected($event) {
         if (this.selected.id !== undefined)
-          this.nodes.find(e => e.id === this.selected.id).image = this.selected.image;
-        this.nodes.find(e => e.id === $event.nodes[0]).image = '/images/router-selected.png';
+          this.nodes[this.nodesIndexes[this.selected.id]].image = this.selected.image;
+        this.nodes[this.nodesIndexes[$event.nodes[0]]].image = '/images/router-selected.png';
         this.selected = this.devices[$event.nodes[0]];
         this.$store.commit('setLeftMenu', true);
       },
       onNodeDeselected($event) {
-        if (this.nodes.find(e => e.id === this.selected.id))
-          this.nodes.find(e => e.id === this.selected.id).image = this.selected.image;
+        if (this.nodes[this.nodesIndexes[this.selected.id]])
+          this.nodes[this.nodesIndexes[this.selected.id]].image = this.selected.image;
         if (!$event.nodes.length) {
           this.selected = {};
         }

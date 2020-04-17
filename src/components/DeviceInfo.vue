@@ -22,7 +22,7 @@
         <th>Device name</th>
         <th>Device ID</th>
         <th>Source port</th>
-        <th>Destination port</th>
+        <th>Dest. port</th>
       </tr>
       <tr v-for="(linkDevice, index) in device.links" :key="index" @click="$emit('device-selected', linkDevice)">
         <td>{{linkDevice.label}}</td>
