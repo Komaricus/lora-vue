@@ -32,23 +32,26 @@
       </tr>
     </table>
     <p v-else>No links specified</p>
-    <div class="charts">
+    <div class="charts" v-if="!device.hasOwnProperty('link')">
       <p class="bold">Charts</p>
+      <!--      make toggle -->
       <button class="text" @click="chartType = 'battery'" :class="{active: chartType === 'battery'}">
         Battery
       </button>
       <button class="text" @click="chartType = 'load'" :class="{active: chartType === 'load'}">
         Load
       </button>
-      <battery-chart v-if="!device.hasOwnProperty('link') && chartType === 'battery'" :device="device" style="margin: 10px 0"/>
-      <load-chart v-if="!device.hasOwnProperty('link') && chartType === 'load'" :device="device" style="margin: 10px 0"/>
+      <battery-chart v-if="!device.hasOwnProperty('link') && chartType === 'battery'" :device="device"
+                     style="margin: 10px 0"/>
+      <load-chart v-if="!device.hasOwnProperty('link') && chartType === 'load'" :device="device"
+                  style="margin: 10px 0"/>
     </div>
     <div v-if="!device.hasOwnProperty('link')" class="ping">
       <p class="bold">Ping:</p>
       <p>Type device name below. Example: <span class="bold">s1 - for Device 1</span></p>
       <div style="width: 100%">
         <label>
-          ping s{{+device.id}}
+          ping s{{ dpidToInt(device.id) }}
           <input class="ping-input" type="text" v-model="ping">
         </label>
         <button @click="doPing" style="margin-left: 20px">
@@ -120,6 +123,9 @@
       }
     },
     methods: {
+      dpidToInt(dpid) {
+        return Number("0x" + dpid);
+      },
       async doPing() {
         this.loading = true;
         await axios.post(`${config.api}/nodes/s${+this.device.id}/cmd`, 'ping ' + this.ping, {

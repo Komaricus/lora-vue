@@ -58,7 +58,13 @@
             }
           },
           edges: {
-            color: 'gray'
+            color: 'gray',
+            font: {
+              color: '#2c3e50',
+              size: 16, // px
+              face: 'Avenir',
+              strokeWidth: 2
+            }
           },
           physics: {
             enabled: false,
@@ -69,11 +75,10 @@
             enabled: false,
             addNode: (nodeData, callback) => {
               this.addNodeMode = false;
-
               nodeData.id = this.generateNewID();
               this.addDevice(nodeData);
 
-              axios.post(`${config.api}/switch/add/s${+nodeData.id}`, {
+              axios.post(`${config.api}/switch/add/s${this.dpidToInt(nodeData.id)}`, {
                   params: {
                     delay: "100ms",
                     bw: 50
@@ -92,14 +97,14 @@
             addEdge: (edgeData, callback) => {
               this.addEdgeMode = false;
               if (this.getDeviceEmptyPortIndex(edgeData.from) === -1) {
-                this.message = `Device ${+edgeData.from} has no empty ports!`
+                this.message = `Device ${this.dpidToInt(edgeData.from)} has no empty ports!`;
                 this.snackbar = true;
                 this.$refs.network.disableEditMode();
                 return;
               }
 
               if (this.getDeviceEmptyPortIndex(edgeData.to) === -1) {
-                this.message = `Device ${+edgeData.to} has no empty ports!`
+                this.message = `Device ${this.dpidToInt(edgeData.to)} has no empty ports!`;
                 this.snackbar = true;
                 this.$refs.network.disableEditMode();
                 return;
@@ -166,8 +171,8 @@
 
               axios.get(`${config.api}/link/add`, {
                   params: {
-                    a: 's' + +edgeData.from,
-                    b: 's' + +edgeData.to
+                    a: 's' + this.dpidToInt(edgeData.from),
+                    b: 's' + this.dpidToInt(edgeData.to),
                   }
                 })
                 .then(response => {
@@ -192,20 +197,27 @@
         linksMap: {},
         nodesIndexes: {},
         message: '',
-        snackbar: false
+        snackbar: false,
+        nextId: 0x0000000000000000
       }
     },
     async created() {
       const switches = axios.get(`${config.back}/v1.0/topology/switches`);
       const links = axios.get(`${config.back}/v1.0/topology/links`);
+      const hosts = axios.get(`${config.back}/v1.0/topology/hosts`);
 
-      await axios.all([switches, links])
+      await axios.all([switches, links, hosts])
         .then(responses => {
+          console.log(responses[2]);
+
           for (let i = 0; i < responses[0].data.length; i++) {
             const device = responses[0].data[i];
+            if (this.nextId < parseInt('0x' + device.dpid, 16))
+              this.nextId = parseInt('0x' + device.dpid, 16);
+
             this.nodes.push({
               id: device.dpid,
-              label: 'Device ' + +device.dpid,
+              label: 'Device ' + this.dpidToInt(device.dpid),
               image: '/images/router.png',
               shape: 'image'
             });
@@ -214,7 +226,7 @@
             if (this.devices[device.dpid] === undefined)
               this.devices[device.dpid] = {
                 id: device.dpid,
-                label: 'Device ' + +device.dpid,
+                label: 'Device ' + this.dpidToInt(device.dpid),
                 image: '/images/router.png',
                 shape: 'image',
                 ports: device.ports,
@@ -226,6 +238,7 @@
             if (!(this.linksMap[link.src.dpid + '_' + link.dst.dpid] || this.linksMap[link.dst.dpid + '_' + link.src.dpid])) {
               this.linksMap[link.src.dpid + '_' + link.dst.dpid] = true;
               this.edges.push({
+                label: link.src.name + '_' + link.dst.name,
                 from: link.src.dpid,
                 to: link.dst.dpid,
                 length: 300,
@@ -270,9 +283,12 @@
         });
 
       this.options.physics.enabled = true;
-      this.connect();
+      // this.connect();
     },
     methods: {
+      dpidToInt(dpid) {
+        return Number("0x" + dpid);
+      },
       connect() {
         this.socket = new WebSocket("ws://localhost:5555/v1.0/topology/ws");
         this.socket.onopen = () => {
@@ -292,7 +308,7 @@
         };
       },
       addDevice(nodeData) {
-        nodeData.label = 'Device ' + +nodeData.id;
+        nodeData.label = 'Device ' + this.dpidToInt(nodeData.id);
         nodeData.image = '/images/router-unactive.png';
         nodeData.shape = 'image';
         nodeData.physics = false;
@@ -311,16 +327,17 @@
           links: []
         };
 
-        for (let i = 0; i < 4; i++) {
-          this.devices[nodeData.id].ports.push({
-            "hw_addr": "XX:XX:XX:XX:XX:XX".replace(/X/g, function () {
-              return "0123456789abcdef".charAt(Math.floor(Math.random() * 16))
-            }),
-            name: `s${+nodeData.id}-eth${i + 1}`,
-            "port_no": `0000000${i + 1}`,
-            dpid: nodeData.id
-          })
-        }
+        // ports initialization
+        // for (let i = 0; i < 4; i++) {
+        //   this.devices[nodeData.id].ports.push({
+        //     "hw_addr": "XX:XX:XX:XX:XX:XX".replace(/X/g, function () {
+        //       return "0123456789abcdef".charAt(Math.floor(Math.random() * 16))
+        //     }),
+        //     name: `s${+nodeData.id}-eth${i + 1}`,
+        //     "port_no": `0000000${i + 1}`,
+        //     dpid: nodeData.id
+        //   })
+        // }
       },
       getDeviceEmptyPortIndex(deviceID) {
         for (let i = 0; i < this.devices[deviceID].ports.length; i++) {
@@ -466,16 +483,11 @@
         this.y = $event.pointer.canvas.y;
       },
       generateNewID() {
-        let maxID = 0;
-        for (const node of this.nodes) {
-          if (parseInt(node.id) > maxID) maxID = parseInt(node.id);
-        }
+        this.nextId++;
+        let id = this.nextId.toString(16);
+        id = "0".repeat(16 - id.length) + id;
 
-        maxID++;
-        maxID = String(maxID);
-        maxID = "0".repeat(16 - maxID.length) + maxID;
-
-        return maxID;
+        return id;
       }
     },
     computed: {
