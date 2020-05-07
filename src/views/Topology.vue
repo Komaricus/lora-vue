@@ -76,7 +76,7 @@
             addNode: (nodeData, callback) => {
               this.addNodeMode = false;
               nodeData.id = this.generateNewID();
-              this.addDevice(nodeData);
+              // this.addDevice(nodeData);
 
               axios.post(`${config.api}/switch/add/s${this.dpidToInt(nodeData.id)}`, {
                   params: {
@@ -96,19 +96,19 @@
             },
             addEdge: (edgeData, callback) => {
               this.addEdgeMode = false;
-              if (this.getDeviceEmptyPortIndex(edgeData.from) === -1) {
-                this.message = `Device ${this.dpidToInt(edgeData.from)} has no empty ports!`;
-                this.snackbar = true;
-                this.$refs.network.disableEditMode();
-                return;
-              }
-
-              if (this.getDeviceEmptyPortIndex(edgeData.to) === -1) {
-                this.message = `Device ${this.dpidToInt(edgeData.to)} has no empty ports!`;
-                this.snackbar = true;
-                this.$refs.network.disableEditMode();
-                return;
-              }
+              // if (this.getDeviceEmptyPortIndex(edgeData.from) === -1) {
+              //   this.message = `Device ${this.dpidToInt(edgeData.from)} has no empty ports!`;
+              //   this.snackbar = true;
+              //   this.$refs.network.disableEditMode();
+              //   return;
+              // }
+              //
+              // if (this.getDeviceEmptyPortIndex(edgeData.to) === -1) {
+              //   this.message = `Device ${this.dpidToInt(edgeData.to)} has no empty ports!`;
+              //   this.snackbar = true;
+              //   this.$refs.network.disableEditMode();
+              //   return;
+              // }
 
               if (edgeData.from === edgeData.to) {
                 this.message = 'Cyclic links ara forbidden!';
@@ -125,50 +125,6 @@
                 return;
               }
 
-              this.linksMap[edgeData.from + '_' + edgeData.to] = true;
-              edgeData.arrows = {
-                to: {
-                  enabled: true,
-                  type: 'triangle'
-                },
-                from: {
-                  enabled: true,
-                  type: 'triangle'
-                }
-              };
-              this.edges.push(edgeData);
-
-              const fromPort = this.devices[edgeData.from].ports[this.getDeviceEmptyPortIndex(edgeData.from)].name;
-              const toPort = this.devices[edgeData.to].ports[this.getDeviceEmptyPortIndex(edgeData.to)].name;
-
-              const indexFrom = this.nodesIndexes[edgeData.from];
-              this.nodes[indexFrom].image = '/images/router.png';
-              this.nodes[indexFrom].physics = true;
-
-              const indexTo = this.nodesIndexes[edgeData.to];
-              this.nodes[indexTo].image = '/images/router.png';
-              this.nodes[indexTo].physics = true;
-
-              this.devices[edgeData.from].image = '/images/router.png';
-              this.devices[edgeData.from].physics = true;
-
-              this.devices[edgeData.to].image = '/images/router.png';
-              this.devices[edgeData.to].physics = true;
-
-              this.devices[edgeData.from].links.push({
-                id: this.devices[edgeData.to].id,
-                label: this.devices[edgeData.to].label,
-                srcPort: fromPort,
-                dstPort: toPort
-              });
-
-              this.devices[edgeData.to].links.push({
-                id: this.devices[edgeData.from].id,
-                label: this.devices[edgeData.from].label,
-                srcPort: toPort,
-                dstPort: fromPort
-              });
-
               axios.get(`${config.api}/link/add`, {
                   params: {
                     a: 's' + this.dpidToInt(edgeData.from),
@@ -181,6 +137,38 @@
                 .catch(error => {
                   console.error(error)
                 });
+
+              // const fromPort = this.devices[edgeData.from].ports[this.getDeviceEmptyPortIndex(edgeData.from)].name;
+              // const toPort = this.devices[edgeData.to].ports[this.getDeviceEmptyPortIndex(edgeData.to)].name;
+              //
+              // const indexFrom = this.nodesIndexes[edgeData.from];
+              // this.nodes[indexFrom].image = '/images/router.png';
+              // this.nodes[indexFrom].physics = true;
+              //
+              // const indexTo = this.nodesIndexes[edgeData.to];
+              // this.nodes[indexTo].image = '/images/router.png';
+              // this.nodes[indexTo].physics = true;
+              //
+              // this.devices[edgeData.from].image = '/images/router.png';
+              // this.devices[edgeData.from].physics = true;
+              //
+              // this.devices[edgeData.to].image = '/images/router.png';
+              // this.devices[edgeData.to].physics = true;
+              //
+              // this.devices[edgeData.from].links.push({
+              //   id: this.devices[edgeData.to].id,
+              //   label: this.devices[edgeData.to].label,
+              //   srcPort: fromPort,
+              //   dstPort: toPort
+              // });
+              //
+              // this.devices[edgeData.to].links.push({
+              //   id: this.devices[edgeData.from].id,
+              //   label: this.devices[edgeData.from].label,
+              //   srcPort: toPort,
+              //   dstPort: fromPort
+              // });
+
 
               callback(edgeData);
 
@@ -283,7 +271,7 @@
         });
 
       this.options.physics.enabled = true;
-      // this.connect();
+      this.connect();
     },
     methods: {
       dpidToInt(dpid) {
@@ -296,12 +284,13 @@
 
           this.socket.onmessage = ({data}) => {
             const parsedData = JSON.parse(data);
+            console.log(parsedData);
             switch (parsedData.method) {
               case 'event_switch_enter':
                 this.addDevice({id: parsedData.params[0].dpid});
                 break;
-              default:
-                console.log(parsedData);
+              case 'event_link_enter':
+                this.addLink(parsedData.params[0]);
                 break;
             }
           };
@@ -338,6 +327,25 @@
         //     dpid: nodeData.id
         //   })
         // }
+      },
+      addLink(params) {
+        const edgeData = {
+          from: params.src,
+          to: params.dst
+        };
+
+        this.linksMap[edgeData.from + '_' + edgeData.to] = true;
+        edgeData.arrows = {
+          to: {
+            enabled: true,
+            type: 'triangle'
+          },
+          from: {
+            enabled: true,
+            type: 'triangle'
+          }
+        };
+        this.edges.push(edgeData);
       },
       getDeviceEmptyPortIndex(deviceID) {
         for (let i = 0; i < this.devices[deviceID].ports.length; i++) {
