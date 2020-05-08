@@ -1,6 +1,7 @@
 <template>
   <div v-if="device.hasOwnProperty('id') && $store.getters.getLeftMenu" class="content">
-    <h2>Selected: {{device.label}}</h2>
+    <h2 v-if="device.hasOwnProperty('link')">Selected: Link {{device.label}}</h2>
+    <h2 v-else>Selected: {{device.label}}</h2>
     <p v-if="!device.hasOwnProperty('link')"><span class="bold">ID: </span>{{device.id}}</p>
     <p class="bold">Ports:</p>
     <table v-if="device.ports.length">

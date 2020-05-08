@@ -2,6 +2,9 @@
   <div>
     <Navbar @add-node-clicked="onAddNodeButtonClicked"
             @add-link-clicked="onAddLinkButtonClicked"/>
+    <div v-if="$store.getters.getLoading" class="overlay">
+      <span class="mdi mdi-loading mdi-spin loader"/>
+    </div>
     <div v-if="addNodeMode" class="tooltip">Click anywhere to add device.</div>
     <div v-if="addEdgeMode" class="tooltip">Click on a device and drag the link to another device to connect them.</div>
     <div class="wrapper">
@@ -194,6 +197,7 @@
       const links = axios.get(`${config.back}/v1.0/topology/links`);
       const hosts = axios.get(`${config.back}/v1.0/topology/hosts`);
 
+      this.$store.commit("setLoading", true);
       await axios.all([switches, links, hosts])
         .then(responses => {
           console.log(responses[2]);
@@ -223,42 +227,10 @@
           }
 
           for (const link of responses[1].data) {
-            if (!(this.linksMap[link.src.dpid + '_' + link.dst.dpid] || this.linksMap[link.dst.dpid + '_' + link.src.dpid])) {
-              this.linksMap[link.src.dpid + '_' + link.dst.dpid] = true;
-              this.edges.push({
-                label: link.src.name + '_' + link.dst.name,
-                from: link.src.dpid,
-                to: link.dst.dpid,
-                length: 300,
-                arrows: {
-                  to: {
-                    enabled: true,
-                    type: 'triangle'
-                  },
-                  from: {
-                    enabled: true,
-                    type: 'triangle'
-                  }
-                }
-              });
-            }
-
-            this.devices[link.src.dpid].links.push({
-              id: this.devices[link.dst.dpid].id,
-              label: this.devices[link.dst.dpid].label,
-              srcPort: link.src.name,
-              dstPort: link.dst.name,
-            });
+            this.addLink(link)
           }
 
-          for (const device in this.devices) {
-            if (!this.devices[device].links.length) {
-              this.devices[device].physics = false;
-              this.devices[device].image = '/images/router-unactive.png';
-              this.nodes[this.nodesIndexes[device]].physics = false;
-              this.nodes[this.nodesIndexes[device]].image = '/images/router-unactive.png';
-            }
-          }
+          this.checkDevicesReachable();
         })
         .catch(error => {
           console.error(error);
@@ -272,10 +244,29 @@
 
       this.options.physics.enabled = true;
       this.connect();
+
+      setTimeout(() => {
+        this.$store.commit("setLoading", false);
+      }, 300);
     },
     methods: {
       dpidToInt(dpid) {
         return Number("0x" + dpid);
+      },
+      checkDevicesReachable() {
+        for (const device in this.devices) {
+          if (!this.devices[device].links.length) {
+            this.devices[device].physics = false;
+            this.devices[device].image = '/images/router-unactive.png';
+            this.nodes[this.nodesIndexes[device]].physics = false;
+            this.nodes[this.nodesIndexes[device]].image = '/images/router-unactive.png';
+          } else if (!this.devices[device].physics) {
+            this.devices[device].physics = true;
+            this.devices[device].image = '/images/router.png';
+            this.nodes[this.nodesIndexes[device]].physics = true;
+            this.nodes[this.nodesIndexes[device]].image = '/images/router.png';
+          }
+        }
       },
       connect() {
         this.socket = new WebSocket("ws://localhost:5555/v1.0/topology/ws");
@@ -284,6 +275,7 @@
         };
 
         this.socket.onmessage = ({data}) => {
+          this.$store.commit("setLoading", true);
           const parsedData = JSON.parse(data);
           console.log(parsedData);
           switch (parsedData.method) {
@@ -292,15 +284,25 @@
               break;
             case 'event_link_add':
               this.addLink(parsedData.params[0]);
+              this.checkDevicesReachable();
+              break;
+            case 'event_link_delete':
+              console.log(parsedData);
+              break;
+            case 'event_switch_leave':
+              console.log(parsedData);
               break;
           }
 
           this.socket.send(JSON.stringify({"id": data.id, "jsonrpc": "2.0", "result": ""}));
+          setTimeout(() => {
+            this.$store.commit("setLoading", false);
+          }, 300);
         };
 
         this.socket.onclose = (event) => {
           console.log(event)
-        }
+        };
 
         this.socket.onerror = (error) => {
           console.error(error)
@@ -342,7 +344,7 @@
         if (!(this.linksMap[link.src.dpid + '_' + link.dst.dpid] || this.linksMap[link.dst.dpid + '_' + link.src.dpid])) {
           this.linksMap[link.src.dpid + '_' + link.dst.dpid] = true;
           this.edges.push({
-            label: link.src.name + '_' + link.dst.name,
+            label: `${link.src.name}_${link.dst.name}`,
             from: link.src.dpid,
             to: link.dst.dpid,
             length: 300,
@@ -357,15 +359,31 @@
               }
             }
           });
-        }
-      },
-      getDeviceEmptyPortIndex(deviceID) {
-        for (let i = 0; i < this.devices[deviceID].ports.length; i++) {
-          const portName = this.devices[deviceID].ports[i].name;
-          if (!this.devices[deviceID].links.some(e => e.srcPort === portName)) return i;
+
+          this.devices[link.src.dpid].links.push({
+            id: this.devices[link.dst.dpid].id,
+            label: this.devices[link.dst.dpid].label,
+            srcPort: link.src.name,
+            dstPort: link.dst.name,
+          });
+
+          if (this.devices[link.src.dpid].ports.findIndex(e => e.name === link.src.name) === -1) {
+            this.devices[link.src.dpid].ports.push(link.src);
+          }
+
+          this.devices[link.dst.dpid].links.push({
+            id: this.devices[link.src.dpid].id,
+            label: this.devices[link.src.dpid].label,
+            srcPort: link.dst.name,
+            dstPort: link.src.name,
+          });
+
+          if (this.devices[link.dst.dpid].ports.findIndex(e => e.name === link.dst.name) === -1) {
+            this.devices[link.dst.dpid].ports.push(link.dst);
+          }
         }
 
-        return -1;
+        // {hw_addr: "da:32:92:da:81:aa", name: "s2-eth3", port_no: "00000003", dpid: "0000000000000002"}
       },
       onDeleteButtonClicked() {
         if (this.selected.link) {
@@ -455,8 +473,6 @@
             }
           }
         }
-        if (link.ports.length === 2) link.label = `Link ${link.ports[0].name}_${link.ports[1].name}`;
-        else link.label = 'Link ';
 
         this.selected = link;
 

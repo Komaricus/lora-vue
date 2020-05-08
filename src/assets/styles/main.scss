@@ -51,6 +51,13 @@ button:hover {
   background-color: $lime;
 }
 
+button:disabled {
+  color: lightgray;
+  border: 2px solid lightgray;
+  background-color: white;
+  cursor: default;
+}
+
 a {
   text-decoration: none;
   color: inherit;
@@ -58,4 +65,22 @@ a {
 
 .bold {
   font-weight: bold;
+}
+
+.loader {
+  color: white;
+  position: absolute;
+  top: calc(50% - 60px);
+  left: 50%;
+  z-index: 1000;
+  font-size: 60px;
+}
+
+.overlay {
+  opacity: 0.46;
+  background-color: rgb(33, 33, 33);
+  height: 100vh;
+  width: 100vw;
+  position: absolute;
+  z-index: 999;
 }
