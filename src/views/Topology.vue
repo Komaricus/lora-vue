@@ -77,9 +77,9 @@
           manipulation: {
             enabled: false,
             addNode: (nodeData, callback) => {
+              this.$store.commit("setLoading", true);
               this.addNodeMode = false;
               nodeData.id = this.generateNewID();
-              // this.addDevice(nodeData);
 
               axios.post(`${config.api}/switch/add/s${this.dpidToInt(nodeData.id)}`, {
                   params: {
@@ -99,19 +99,6 @@
             },
             addEdge: (edgeData, callback) => {
               this.addEdgeMode = false;
-              // if (this.getDeviceEmptyPortIndex(edgeData.from) === -1) {
-              //   this.message = `Device ${this.dpidToInt(edgeData.from)} has no empty ports!`;
-              //   this.snackbar = true;
-              //   this.$refs.network.disableEditMode();
-              //   return;
-              // }
-              //
-              // if (this.getDeviceEmptyPortIndex(edgeData.to) === -1) {
-              //   this.message = `Device ${this.dpidToInt(edgeData.to)} has no empty ports!`;
-              //   this.snackbar = true;
-              //   this.$refs.network.disableEditMode();
-              //   return;
-              // }
 
               if (edgeData.from === edgeData.to) {
                 this.message = 'Cyclic links ara forbidden!';
@@ -128,6 +115,7 @@
                 return;
               }
 
+              this.$store.commit("setLoading", true);
               axios.get(`${config.api}/link/add`, {
                   params: {
                     a: 's' + this.dpidToInt(edgeData.from),
@@ -141,41 +129,8 @@
                   console.error(error)
                 });
 
-              // const fromPort = this.devices[edgeData.from].ports[this.getDeviceEmptyPortIndex(edgeData.from)].name;
-              // const toPort = this.devices[edgeData.to].ports[this.getDeviceEmptyPortIndex(edgeData.to)].name;
-              //
-              // const indexFrom = this.nodesIndexes[edgeData.from];
-              // this.nodes[indexFrom].image = '/images/router.png';
-              // this.nodes[indexFrom].physics = true;
-              //
-              // const indexTo = this.nodesIndexes[edgeData.to];
-              // this.nodes[indexTo].image = '/images/router.png';
-              // this.nodes[indexTo].physics = true;
-              //
-              // this.devices[edgeData.from].image = '/images/router.png';
-              // this.devices[edgeData.from].physics = true;
-              //
-              // this.devices[edgeData.to].image = '/images/router.png';
-              // this.devices[edgeData.to].physics = true;
-              //
-              // this.devices[edgeData.from].links.push({
-              //   id: this.devices[edgeData.to].id,
-              //   label: this.devices[edgeData.to].label,
-              //   srcPort: fromPort,
-              //   dstPort: toPort
-              // });
-              //
-              // this.devices[edgeData.to].links.push({
-              //   id: this.devices[edgeData.from].id,
-              //   label: this.devices[edgeData.from].label,
-              //   srcPort: toPort,
-              //   dstPort: fromPort
-              // });
-
-
-              callback(edgeData);
-
               this.$refs.network.disableEditMode();
+              callback(edgeData);
             }
           }
         },
@@ -265,6 +220,8 @@
             this.devices[device].image = '/images/router.png';
             this.nodes[this.nodesIndexes[device]].physics = true;
             this.nodes[this.nodesIndexes[device]].image = '/images/router.png';
+            this.nodes[this.nodesIndexes[device]].x = undefined;
+            this.nodes[this.nodesIndexes[device]].y = undefined;
           }
         }
       },
@@ -275,7 +232,6 @@
         };
 
         this.socket.onmessage = ({data}) => {
-          this.$store.commit("setLoading", true);
           const parsedData = JSON.parse(data);
           console.log(parsedData);
           switch (parsedData.method) {
@@ -295,9 +251,7 @@
           }
 
           this.socket.send(JSON.stringify({"id": data.id, "jsonrpc": "2.0", "result": ""}));
-          setTimeout(() => {
-            this.$store.commit("setLoading", false);
-          }, 300);
+          this.$store.commit("setLoading", false);
         };
 
         this.socket.onclose = (event) => {
@@ -327,18 +281,6 @@
           ports: [],
           links: []
         };
-
-        // ports initialization
-        // for (let i = 0; i < 4; i++) {
-        //   this.devices[nodeData.id].ports.push({
-        //     "hw_addr": "XX:XX:XX:XX:XX:XX".replace(/X/g, function () {
-        //       return "0123456789abcdef".charAt(Math.floor(Math.random() * 16))
-        //     }),
-        //     name: `s${+nodeData.id}-eth${i + 1}`,
-        //     "port_no": `0000000${i + 1}`,
-        //     dpid: nodeData.id
-        //   })
-        // }
       },
       addLink(link) {
         if (!(this.linksMap[link.src.dpid + '_' + link.dst.dpid] || this.linksMap[link.dst.dpid + '_' + link.src.dpid])) {
@@ -382,8 +324,6 @@
             this.devices[link.dst.dpid].ports.push(link.dst);
           }
         }
-
-        // {hw_addr: "da:32:92:da:81:aa", name: "s2-eth3", port_no: "00000003", dpid: "0000000000000002"}
       },
       onDeleteButtonClicked() {
         if (this.selected.link) {
