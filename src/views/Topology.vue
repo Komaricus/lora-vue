@@ -87,15 +87,13 @@
                     bw: 50
                   }
                 })
-                .then(response => {
-                  console.log(response)
+                .then(() => {
+                  this.$refs.network.disableEditMode();
+                  callback(nodeData);
                 })
                 .catch(error => {
                   console.error(error)
                 });
-
-              this.$refs.network.disableEditMode();
-              callback(nodeData);
             },
             addEdge: (edgeData, callback) => {
               this.addEdgeMode = false;
@@ -122,22 +120,22 @@
                     b: 's' + this.dpidToInt(edgeData.to),
                   }
                 })
-                .then(response => {
-                  console.log(response)
+                .then(() => {
+                  this.$refs.network.disableEditMode();
+                  callback(edgeData);
                 })
                 .catch(error => {
                   console.error(error)
                 });
-
-              this.$refs.network.disableEditMode();
-              callback(edgeData);
             }
           }
         },
         devices: {},
         selected: {},
-        x: 0,
-        y: 0,
+        position: {
+          x: 0,
+          y: 0,
+        },
         addNodeMode: false,
         addEdgeMode: false,
         linksMap: {},
@@ -267,8 +265,8 @@
         nodeData.image = '/images/router-unactive.png';
         nodeData.shape = 'image';
         nodeData.physics = false;
-        nodeData.x = this.x;
-        nodeData.y = this.y;
+        nodeData.x = this.position.x;
+        nodeData.y = this.position.y;
 
         this.nodes.push(nodeData);
         this.nodesIndexes[nodeData.id] = this.nodes.length - 1;
@@ -455,8 +453,8 @@
         this.addNodeMode = true;
       },
       onClick($event) {
-        this.x = $event.pointer.canvas.x;
-        this.y = $event.pointer.canvas.y;
+        this.position.x = $event.pointer.canvas.x;
+        this.position.y = $event.pointer.canvas.y;
       },
       generateNewID() {
         this.nextId++;
