@@ -281,20 +281,30 @@
         this.socket = new WebSocket("ws://localhost:5555/v1.0/topology/ws");
         this.socket.onopen = () => {
           console.log("connected to ws://localhost:5555/v1.0/topology/ws");
-
-          this.socket.onmessage = ({data}) => {
-            const parsedData = JSON.parse(data);
-            console.log(parsedData);
-            switch (parsedData.method) {
-              case 'event_switch_enter':
-                this.addDevice({id: parsedData.params[0].dpid});
-                break;
-              case 'event_link_enter':
-                this.addLink(parsedData.params[0]);
-                break;
-            }
-          };
         };
+
+        this.socket.onmessage = ({data}) => {
+          const parsedData = JSON.parse(data);
+          console.log(parsedData);
+          switch (parsedData.method) {
+            case 'event_switch_enter':
+              this.addDevice({id: parsedData.params[0].dpid});
+              break;
+            case 'event_link_add':
+              this.addLink(parsedData.params[0]);
+              break;
+          }
+
+          this.socket.send(JSON.stringify({"id": data.id, "jsonrpc": "2.0", "result": ""}));
+        };
+
+        this.socket.onclose = (event) => {
+          console.log(event)
+        }
+
+        this.socket.onerror = (error) => {
+          console.error(error)
+        }
       },
       addDevice(nodeData) {
         nodeData.label = 'Device ' + this.dpidToInt(nodeData.id);
@@ -328,24 +338,26 @@
         //   })
         // }
       },
-      addLink(params) {
-        const edgeData = {
-          from: params.src,
-          to: params.dst
-        };
-
-        this.linksMap[edgeData.from + '_' + edgeData.to] = true;
-        edgeData.arrows = {
-          to: {
-            enabled: true,
-            type: 'triangle'
-          },
-          from: {
-            enabled: true,
-            type: 'triangle'
-          }
-        };
-        this.edges.push(edgeData);
+      addLink(link) {
+        if (!(this.linksMap[link.src.dpid + '_' + link.dst.dpid] || this.linksMap[link.dst.dpid + '_' + link.src.dpid])) {
+          this.linksMap[link.src.dpid + '_' + link.dst.dpid] = true;
+          this.edges.push({
+            label: link.src.name + '_' + link.dst.name,
+            from: link.src.dpid,
+            to: link.dst.dpid,
+            length: 300,
+            arrows: {
+              to: {
+                enabled: true,
+                type: 'triangle'
+              },
+              from: {
+                enabled: true,
+                type: 'triangle'
+              }
+            }
+          });
+        }
       },
       getDeviceEmptyPortIndex(deviceID) {
         for (let i = 0; i < this.devices[deviceID].ports.length; i++) {
