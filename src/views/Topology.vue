@@ -16,13 +16,14 @@
                :nodes="nodes"
                :edges="edges"
                :options="options"
-               :events="['selectNode', 'deselectNode', 'nodesAdd', 'click', 'edgeAdd', 'selectEdge', 'deselectEdge']"
+               :events="['selectNode', 'deselectNode', 'nodesAdd', 'click', 'edgeAdd', 'selectEdge', 'deselectEdge', 'dragStart']"
                @select-edge="onEdgeSelected"
                @deselect-edge="onEdgeDeselected"
                @select-node="onNodeSelected"
                @deselect-node="onNodeDeselected"
                @nodes-add="addNodeMode = false"
                @edge-add="addEdgeMode = false"
+               @drag-start="onDragStart"
                @click="onClick"/>
     </div>
     <div class="snackbar" v-if="snackbar">
@@ -81,7 +82,7 @@
               this.addNodeMode = false;
               nodeData.id = this.generateNewID();
 
-              axios.post(`${config.api}/switch/add/s${this.dpidToInt(nodeData.id)}`, {
+              axios.post(`${config.api}/switch/s${this.dpidToInt(nodeData.id)}`, {
                   params: {
                     delay: "100ms",
                     bw: 50
@@ -114,11 +115,9 @@
               }
 
               this.$store.commit("setLoading", true);
-              axios.get(`${config.api}/link/add`, {
-                  params: {
-                    a: 's' + this.dpidToInt(edgeData.from),
-                    b: 's' + this.dpidToInt(edgeData.to),
-                  }
+              axios.post(`${config.api}/link`, {
+                  a: 's' + this.dpidToInt(edgeData.from),
+                  b: 's' + this.dpidToInt(edgeData.to),
                 })
                 .then(() => {
                   this.$refs.network.disableEditMode();
@@ -153,7 +152,7 @@
       this.$store.commit("setLoading", true);
       await axios.all([switches, links, hosts])
         .then(responses => {
-          console.log(responses[2]);
+          // console.log(responses[2]);
 
           for (let i = 0; i < responses[0].data.length; i++) {
             const device = responses[0].data[i];
@@ -218,8 +217,6 @@
             this.devices[device].image = '/images/router.png';
             this.nodes[this.nodesIndexes[device]].physics = true;
             this.nodes[this.nodesIndexes[device]].image = '/images/router.png';
-            this.nodes[this.nodesIndexes[device]].x = undefined;
-            this.nodes[this.nodesIndexes[device]].y = undefined;
           }
         }
       },
@@ -241,10 +238,10 @@
               this.checkDevicesReachable();
               break;
             case 'event_link_delete':
-              console.log(parsedData);
+              this.deleteLink(parsedData.params[0]);
               break;
             case 'event_switch_leave':
-              console.log(parsedData);
+              this.deleteDevice(parsedData.params[0].dpid);
               break;
           }
 
@@ -258,6 +255,14 @@
 
         this.socket.onerror = (error) => {
           console.error(error)
+        }
+      },
+      initLinkMap() {
+        this.linksMap = {};
+        for (const link of this.edges) {
+          if (!(this.linksMap[link.from + '_' + link.to]
+            || this.linksMap[link.to + '_' + link.from]))
+            this.linksMap[link.from + '_' + link.to] = true;
         }
       },
       addDevice(nodeData) {
@@ -279,6 +284,11 @@
           ports: [],
           links: []
         };
+
+        setTimeout(() => {
+          this.nodes[this.nodesIndexes[nodeData.id]].x = undefined;
+          this.nodes[this.nodesIndexes[nodeData.id]].y = undefined;
+        }, 50);
       },
       addLink(link) {
         if (!(this.linksMap[link.src.dpid + '_' + link.dst.dpid] || this.linksMap[link.dst.dpid + '_' + link.src.dpid])) {
@@ -323,69 +333,76 @@
           }
         }
       },
-      onDeleteButtonClicked() {
+      deleteDevice(id) {
+        this.nodes.splice(this.nodesIndexes[id], 1);
+        this.nodesIndexes = {};
+        for (let i = 0; i < this.nodes.length; i++) {
+          this.nodesIndexes[this.nodes[i].id] = i;
+        }
+
+        this.edges = this.edges.filter(e => {
+          return e.from !== id && e.to !== id
+        });
+
+        this.initLinkMap();
+        delete this.devices[id];
+
+        for (const device in this.devices) {
+          this.devices[device].links = this.devices[device].links.filter(e => {
+            return e.id !== id
+          });
+          if (!this.devices[device].links.length) {
+            this.devices[device].physics = false;
+            this.devices[device].image = '/images/router-unactive.png';
+            this.nodes[this.nodesIndexes[device]].physics = false;
+            this.nodes[this.nodesIndexes[device]].image = '/images/router-unactive.png';
+          }
+        }
+      },
+      deleteLink(link) {
+        if (!(this.linksMap[link.src.dpid + '_' + link.dst.dpid] || this.linksMap[link.dst.dpid + '_' + link.src.dpid]))
+          return;
+
+        this.edges = this.edges.filter(e => {
+          return !((e.from === link.src.dpid && e.to === link.dst.dpid) || (e.from === link.dst.dpid && e.to === link.src.dpid))
+        });
+
+        this.initLinkMap();
+
+        if (this.devices[link.src.dpid] !== undefined) {
+          this.devices[link.src.dpid].links = this.devices[link.src.dpid].links.filter(e => {
+            return (e.id !== link.src.dpid && e.id !== link.dst.dpid)
+          });
+        }
+        if (this.devices[link.dst.dpid] !== undefined) {
+          this.devices[link.dst.dpid].links = this.devices[link.dst.dpid].links.filter(e => {
+            return (e.id !== link.src.dpid && e.id !== link.dst.dpid)
+          });
+        }
+
+        this.checkDevicesReachable();
+      },
+      async onDeleteButtonClicked() {
+        this.$store.commit("setLoading", true);
         if (this.selected.link) {
-          this.edges = this.edges.filter(e => {
-            return e.id !== this.selected.id
-          });
-
-          this.linksMap = {};
-          for (const link of this.edges) {
-            if (!(this.linksMap[link.from + '_' + link.to]
-              || this.linksMap[link.to + '_' + link.from]))
-              this.linksMap[link.from + '_' + link.to] = true;
-          }
-
-          this.devices[this.selected.from].links = this.devices[this.selected.from].links.filter(e => {
-            return (e.id !== this.selected.from && e.id !== this.selected.to)
-          });
-          this.devices[this.selected.to].links = this.devices[this.selected.to].links.filter(e => {
-            return (e.id !== this.selected.from && e.id !== this.selected.to)
-          });
-
-          for (const device in this.devices) {
-            if (!this.devices[device].links.length) {
-              this.devices[device].physics = false;
-              this.devices[device].image = '/images/router-unactive.png';
-              this.nodes[this.nodesIndexes[device]].physics = false;
-              this.nodes[this.nodesIndexes[device]].image = '/images/router-unactive.png';
-            }
-          }
-        } else {
-          this.nodes.splice(this.nodesIndexes[this.selected.id], 1);
-          this.nodesIndexes = {};
-          for (let i = 0; i < this.nodes.length; i++) {
-            this.nodesIndexes[this.nodes[i].id] = i;
-          }
-
-          this.edges = this.edges.filter(e => {
-            return e.from !== this.selected.id && e.to !== this.selected.id
-          });
-
-          this.linksMap = {};
-          for (const link of this.edges) {
-            if (!(this.linksMap[link.from + '_' + link.to]
-              || this.linksMap[link.to + '_' + link.from]))
-              this.linksMap[link.from + '_' + link.to] = true;
-          }
-          delete this.devices[this.selected.id];
-
-          for (const device in this.devices) {
-            this.devices[device].links = this.devices[device].links.filter(e => {
-              return e.id !== this.selected.id
+          await axios.delete(`${config.api}/link`, {
+              data: {
+                a: `s${this.dpidToInt(this.selected.to)}`,
+                b: `s${this.dpidToInt(this.selected.from)}`
+              }
+            })
+            .catch(error => {
+              console.error(error)
             });
-            if (!this.devices[device].links.length) {
-              this.devices[device].physics = false;
-              this.devices[device].image = '/images/router-unactive.png';
-              this.nodes[this.nodesIndexes[device]].physics = false;
-              this.nodes[this.nodesIndexes[device]].image = '/images/router-unactive.png';
-            }
-          }
+        } else {
+          await axios.delete(`${config.api}/switch/s${this.dpidToInt(this.selected.id)}`)
+            .catch(error => {
+              console.error(error)
+            });
         }
 
         this.$refs.network.deleteSelected();
         this.selected = {};
-        //todo: delete API (by network.getSelection)
       },
       onEdgeSelected($event) {
         if ($event.nodes.length) return;
@@ -462,7 +479,12 @@
         id = "0".repeat(16 - id.length) + id;
 
         return id;
+      },
+      onDragStart($event) {
+        if ($event.nodes.length)
+          this.onNodeSelected({nodes: $event.nodes});
       }
+
     },
     computed: {
       showLeftMenu() {
