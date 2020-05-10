@@ -4,7 +4,7 @@
       <span class="mdi mdi-menu"/>
     </button>
 
-    <a href="/"><h1>Lora-Vue</h1></a>
+    <a href="/"><img alt="logo" src="../assets/logo.svg" style="height: 50px; padding: 5px"></a>
     <button v-if="$route.name === 'Topology'" :disabled="$store.getters.getLoading" style="margin-left: auto;" @click="$emit('add-link-clicked')">
       <span class="mdi mdi-plus"/>
       Add Link

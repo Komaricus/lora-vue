@@ -77,7 +77,8 @@
     <p>Click on device to watch it's info</p>
 
     <h2 style="margin-top: 30px">Available devices:</h2>
-    <table class="devices-table">
+    <p v-if="!$parent.nodes.length">Nothing is available</p>
+    <table v-else class="devices-table">
       <tr>
         <th>Device name</th>
         <th>Device ID</th>

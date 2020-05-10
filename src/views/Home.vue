@@ -1,7 +1,6 @@
 <template>
   <div class="home">
-    <img alt="Vue logo" src="../assets/logo.png">
-    <h1>Lora-Vue</h1>
+    <img alt="logo" src="../assets/main-logo.svg">
     <p>This application shows Lora-network emulation in real time.</p>
     <button type="button" @click="$router.push('/topology')">Get in it</button>
   </div>
