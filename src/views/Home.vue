@@ -2,7 +2,7 @@
   <div class="home">
     <img alt="logo" src="../assets/main-logo.svg">
     <p>This application shows Lora-network emulation in real time.</p>
-    <button type="button" @click="$router.push('/topology')">Get in it</button>
+    <el-button type="primary" @click="$router.push('/topology')">Get in it</el-button>
   </div>
 </template>
 
@@ -24,10 +24,6 @@
     img {
       max-width: 200px;
       margin-bottom: 2rem;
-    }
-
-    h1 {
-      margin-bottom: 1rem;
     }
 
     p {

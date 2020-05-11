@@ -1,76 +1,116 @@
 <template>
   <div v-if="device.hasOwnProperty('id') && $store.getters.getLeftMenu" class="content">
-    <h2 v-if="device.hasOwnProperty('link')">Selected: Link {{device.label}}</h2>
-    <h2 v-else>Selected: {{device.label}}</h2>
-    <p v-if="!device.hasOwnProperty('link')"><span class="bold">ID: </span>{{device.id}}</p>
-    <p class="bold">Ports:</p>
-    <table v-if="device.ports.length">
-      <tr>
-        <th>HWADDR (MAC)</th>
-        <th>Name</th>
-        <th>Port №</th>
-      </tr>
-      <tr v-for="(port, index) in device.ports" :key="index">
-        <td>{{port.hw_addr}}</td>
-        <td>{{port.name}}</td>
-        <td>{{port.port_no}}</td>
-      </tr>
-    </table>
-    <p v-else>No ports specified</p>
-    <p class="bold">Links:</p>
-    <table v-if="device.links.length" class="devices-table">
-      <tr>
-        <th>Device name</th>
-        <th>Device ID</th>
-        <th v-if="!device.hasOwnProperty('link')">Source port</th>
-        <th v-if="!device.hasOwnProperty('link')">Dest. port</th>
-      </tr>
-      <tr v-for="(linkDevice, index) in device.links" :key="index" @click="$emit('device-selected', linkDevice)">
-        <td>{{linkDevice.label}}</td>
-        <td>{{linkDevice.id}}</td>
-        <td v-if="!device.hasOwnProperty('link')">{{linkDevice.srcPort}}</td>
-        <td v-if="!device.hasOwnProperty('link')">{{linkDevice.dstPort}}</td>
-      </tr>
-    </table>
-    <p v-else>No links specified</p>
-    <div class="charts" v-if="!device.hasOwnProperty('link')">
-      <p class="bold">Charts</p>
-      <!--      make toggle -->
-      <button class="text" @click="chartType = 'battery'" :class="{active: chartType === 'battery'}">
-        Battery
-      </button>
-      <button class="text" @click="chartType = 'load'" :class="{active: chartType === 'load'}">
-        Load
-      </button>
-      <battery-chart v-if="!device.hasOwnProperty('link') && chartType === 'battery'" :device="device"
-                     style="margin: 10px 0"/>
-      <load-chart v-if="!device.hasOwnProperty('link') && chartType === 'load'" :device="device"
-                  style="margin: 10px 0"/>
+    <div class="title">
+      <h2 v-if="device.hasOwnProperty('link')">Selected: Link {{device.label}}</h2>
+      <h2 v-else>Selected: {{device.label}}</h2>
+      <p v-if="!device.hasOwnProperty('link')"><span class="bold">ID: </span>{{device.id}}</p>
     </div>
-    <div v-if="!device.hasOwnProperty('link')" class="ping">
-      <p class="bold">Ping:</p>
-      <p>Type device name below. Example: <span class="bold">s1 - for Device 1</span></p>
-      <div style="width: 100%">
-        <label>
-          ping s{{ dpidToInt(device.id) }}
-          <input class="ping-input" type="text" v-model="ping">
-        </label>
-        <button @click="doPing" style="margin-left: 20px">
-          Ping
-        </button>
-      </div>
-
-      <div class="ping-output">
-        <div v-if="loading" style="margin: 20px auto; text-align: center">
-          <span class="mdi mdi-loading mdi-spin" style="color: #42b983;"/>
+    <el-collapse v-model="activeNames" style="color: #2c3e50">
+      <el-collapse-item name="1">
+        <template slot="title">
+          <p class="bold">Ports</p>
+        </template>
+        <el-table
+            v-if="device.ports.length"
+            :data="device.ports"
+            stripe
+            border
+            style="width: 100%; color: #2c3e50">
+          <el-table-column
+              prop="hw_addr"
+              label="HWADDR (MAC)">
+          </el-table-column>
+          <el-table-column
+              prop="name"
+              label="Name">
+          </el-table-column>
+          <el-table-column
+              prop="port_no"
+              label="Port №">
+          </el-table-column>
+        </el-table>
+        <p v-else>No ports specified</p>
+      </el-collapse-item>
+      <el-collapse-item name="2">
+        <template slot="title">
+          <p class="bold">Links</p>
+        </template>
+        <el-table
+            v-if="device.links.length"
+            class="devices-table"
+            :data="device.links"
+            stripe
+            border
+            highlight-current-row
+            @current-change="handleCurrentChange"
+            style="width: 100%; color: #2c3e50">
+          <el-table-column
+              prop="label"
+              label="Device name">
+          </el-table-column>
+          <el-table-column
+              prop="id"
+              label="Device ID"
+              width="150">
+          </el-table-column>
+          <el-table-column
+              v-if="!device.hasOwnProperty('link')"
+              prop="srcPort"
+              label="Source port"
+              width="100">
+          </el-table-column>
+          <el-table-column
+              v-if="!device.hasOwnProperty('link')"
+              prop="dstPort"
+              label="Dest. port"
+              width="100">
+          </el-table-column>
+        </el-table>
+        <p v-else>No links specified</p>
+      </el-collapse-item>
+      <el-collapse-item name="3" v-if="!device.hasOwnProperty('link')">
+        <template slot="title">
+          <p class="bold">Charts</p>
+        </template>
+        <el-tabs type="border-card">
+          <el-tab-pane label="Battery">
+            <battery-chart :device="device"/>
+          </el-tab-pane>
+          <el-tab-pane label="Load">
+            <load-chart :device="device"/>
+          </el-tab-pane>
+        </el-tabs>
+      </el-collapse-item>
+      <el-collapse-item name="4" v-if="!device.hasOwnProperty('link')">
+        <template slot="title">
+          <p class="bold">Ping</p>
+        </template>
+        <p>Type device name below. Example: <span class="bold">s1 - for Device 1</span></p>
+        <div style="color: #2c3e50; display: flex; padding: 10px 0">
+          <span style="font-size: 14px; padding-top: 8px">ping s{{ dpidToInt(device.id)}}</span>
+          <el-input placeholder="Type here..." v-model="ping" style="padding: 0 10px"/>
+          <el-button :disabled="!ping || loading" type="primary" @click="doPing" style="max-width: 100%">Ping
+          </el-button>
         </div>
-        <div v-else v-html="output"/>
-      </div>
-    </div>
+        <div class="ping-output" :class="{ show: output.length || loading }">
+          <div v-if="loading" style="margin: 20px auto; text-align: center">
+            <i class="el-icon-loading"></i>
+            <br>
+            <span>Loading...</span>
+          </div>
+          <div v-else v-html="output"/>
+        </div>
 
-    <button class="delete-button" @click="$emit('delete-clicked')">
-      Delete
-    </button>
+      </el-collapse-item>
+      <el-collapse-item name="5">
+        <template slot="title">
+          <p class="bold">Settings</p>
+        </template>
+        <el-button type="danger" @click="open" icon="el-icon-delete">
+          Delete
+        </el-button>
+      </el-collapse-item>
+    </el-collapse>
   </div>
   <div v-else-if="$store.getters.getLeftMenu" class="content">
     <h2>Nothing is selected</h2>
@@ -78,16 +118,24 @@
 
     <h2 style="margin-top: 30px">Available devices:</h2>
     <p v-if="!$parent.nodes.length">Nothing is available</p>
-    <table v-else class="devices-table">
-      <tr>
-        <th>Device name</th>
-        <th>Device ID</th>
-      </tr>
-      <tr v-for="item in $parent.nodes" :key="item.id" @click="$emit('device-selected', item)">
-        <td>{{item.label}}</td>
-        <td>{{item.id}}</td>
-      </tr>
-    </table>
+    <el-table
+        v-else
+        class="devices-table"
+        :data="$parent.nodes"
+        stripe
+        border
+        highlight-current-row
+        @current-change="handleCurrentChange"
+        style="width: 100%; color: #2c3e50">
+      <el-table-column
+          prop="label"
+          label="Device name">
+      </el-table-column>
+      <el-table-column
+          prop="id"
+          label="Device ID">
+      </el-table-column>
+    </el-table>
   </div>
 </template>
 
@@ -113,7 +161,14 @@
         ping: '',
         loading: false,
         output: '',
-        chartType: ''
+        activeNames: ['1', '2', '3', '4', '5']
+      }
+    },
+    created() {
+      if (!localStorage.getItem('activeNames')) {
+        localStorage.setItem('activeNames', JSON.stringify(this.activeNames));
+      } else {
+        this.activeNames = JSON.parse(localStorage.getItem('activeNames'));
       }
     },
     watch: {
@@ -121,26 +176,64 @@
         this.ping = '';
         this.loading = false;
         this.output = '';
-        this.chartType = '';
+      },
+      activeNames() {
+        localStorage.setItem('activeNames', JSON.stringify(this.activeNames));
       }
     },
     methods: {
+      open() {
+        const isDevice = this.device.link === undefined;
+        this.$confirm(`Are you sure you want to delete ${isDevice ? this.device.label : 'Link ' + this.device.label}?`,
+          'Delete warning', {
+            confirmButtonText: 'Delete',
+            cancelButtonText: 'Cancel',
+            type: 'warning'
+          }).then(() => {
+          this.$emit('delete-clicked');
+        }).catch(() => {
+          this.$store.commit('notify', {
+            title: 'Delete canceled',
+            type: 'info',
+            position: 'bottom-right',
+            duration: 2000
+          });
+        });
+      },
+      handleCurrentChange(val) {
+        if (val !== null) this.$emit('device-selected', val);
+      },
       dpidToInt(dpid) {
         return Number("0x" + dpid);
       },
       async doPing() {
         this.loading = true;
-        await axios.post(`${config.api}/nodes/s${+this.device.id}/cmd`, 'ping ' + this.ping, {
+        await axios.post(`${config.api}/nodes/s${this.dpidToInt(this.device.id)}/cmd`, 'ping ' + this.ping, {
             headers: {'Content-Type': 'text/plain'}
           })
           .then(response => {
             this.output = response.data.replace('data.', `data.<br>`).split('ms').join(`ms<br>`).replace('---', `<br>---`).replace('statistics ---', `statistics ---<br>`);
+            this.$store.commit('notify', {
+              title: 'Command completed',
+              type: 'success',
+              position: 'bottom-right',
+              duration: 2000
+            });
           })
           .catch(error => {
-            console.error(error)
+            console.error(error);
+            this.$store.commit('notify', {
+              title: 'Error',
+              message: 'Something went wrong',
+              type: 'error',
+              position: 'bottom-right',
+              duration: 2000
+            });
           })
           .finally(() => {
-            this.loading = false;
+            setTimeout(() => {
+              this.loading = false;
+            }, 100)
           });
       }
     }
@@ -150,68 +243,21 @@
 <style lang="scss" scoped>
   @import "../assets/styles/colors";
 
-  table {
-    color: $primary;
-    margin: 10px 0;
-    border-collapse: collapse;
-    width: 100%;
-
-    th, td {
-      border: 1px $secondary solid;
-      padding: 5px;
-    }
-
-    tr:nth-child(even) {
-      background-color: #f2f2f2;
-    }
-  }
-
-  table.devices-table {
-    tr:not(:first-child) {
-      cursor: pointer;
-    }
-
-    tr:not(:first-child):hover {
-      background-color: $light-lime;
-    }
-  }
-
-  .delete-button {
-    color: $danger;
-    border: 2px solid $danger;
-    margin-top: 20px;
-  }
-
-  .delete-button:hover {
-    color: white;
-    background-color: $danger;
-  }
-
-  .ping {
-    margin: 10px 0;
-  }
-
-  .ping-input {
-    margin-top: 10px;
-    font-size: 16px;
-    border: 1px solid $lime;
-    border-radius: 5px;
-    padding: 2px;
-    width: 300px;
+  .title {
+    padding-bottom: 10px;
   }
 
   .ping-output {
+    display: none;
     max-width: 600px;
     white-space: normal;
+    background-color: $primary;
+    color: white;
+    padding: 10px;
+    font-size: 16px;
   }
 
-  .charts {
-    margin: 10px 0;
-  }
-
-  .active {
-    border-bottom-left-radius: 0;
-    border-bottom-right-radius: 0;
-    border-bottom: 2px solid $lime;
+  .show {
+    display: block;
   }
 </style>

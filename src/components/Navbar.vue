@@ -1,18 +1,14 @@
 <template>
   <div class="nav-bar">
-    <button class="icon" @click="toggleLeftMenu">
-      <span class="mdi mdi-menu"/>
-    </button>
+    <el-button type="default" icon="mdi mdi-menu" @click="toggleLeftMenu" circle size="small"/>
 
-    <a href="/"><img alt="logo" src="../assets/logo.svg" style="height: 50px; padding: 5px"></a>
-    <button v-if="$route.name === 'Topology'" :disabled="$store.getters.getLoading" style="margin-left: auto;" @click="$emit('add-link-clicked')">
-      <span class="mdi mdi-plus"/>
+    <a href="/"><img alt="logo" src="../assets/logo.svg" style="height: 40px; padding: 10px"></a>
+    <el-button type="primary" size="medium" v-if="$route.name === 'Topology'" :disabled="$store.getters.getLoading" style="margin-left: auto;" @click="$emit('add-link-clicked')" icon="mdi mdi-plus">
       Add Link
-    </button>
-    <button v-if="$route.name === 'Topology'" :disabled="$store.getters.getLoading" style="margin-left: 10px" @click="$emit('add-node-clicked')">
-      <span class="mdi mdi-plus"/>
+    </el-button>
+    <el-button type="primary" size="medium" v-if="$route.name === 'Topology'" :disabled="$store.getters.getLoading" style="margin-left: 10px" @click="$emit('add-node-clicked')" icon="mdi mdi-plus">
       Add Device
-    </button>
+    </el-button>
   </div>
 </template>
 
@@ -32,11 +28,11 @@
   .nav-bar {
     top: 0;
     left: 0;
-    position: absolute;
+    position: fixed;
     height: 60px;
     width: calc(100% - 40px);
     background-color: #FFF;
-    box-shadow: $shadow;
+    border-bottom: #E4E7ED 1px solid;
     z-index: 1000;
     display: flex;
     align-items: center;

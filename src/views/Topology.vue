@@ -2,9 +2,6 @@
   <div>
     <Navbar @add-node-clicked="onAddNodeButtonClicked"
             @add-link-clicked="onAddLinkButtonClicked"/>
-    <div v-if="$store.getters.getLoading" class="overlay">
-      <span class="mdi mdi-loading mdi-spin loader"/>
-    </div>
     <div v-if="addNodeMode" class="tooltip">Click anywhere to add device.</div>
     <div v-if="addEdgeMode" class="tooltip">Click on a device and drag the link to another device to connect them.</div>
     <div class="wrapper">
@@ -25,9 +22,6 @@
                @edge-add="addEdgeMode = false"
                @drag-start="onDragStart"
                @click="onClick"/>
-    </div>
-    <div class="snackbar" v-if="snackbar">
-      <p style="color: white">{{message}}</p>
     </div>
   </div>
 </template>
@@ -100,16 +94,26 @@
               this.addEdgeMode = false;
 
               if (edgeData.from === edgeData.to) {
-                this.message = 'Cyclic links ara forbidden!';
-                this.snackbar = true;
+                this.$store.commit('notify', {
+                  title: 'Error',
+                  message: 'Cyclic links are forbidden!',
+                  type: 'error',
+                  position: 'bottom-right',
+                  duration: 3000
+                });
                 this.$refs.network.disableEditMode();
                 return;
               }
 
               if (this.linksMap[edgeData.from + '_' + edgeData.to]
                 || this.linksMap[edgeData.to + '_' + edgeData.from]) {
-                this.message = 'Link already exists!';
-                this.snackbar = true;
+                this.$store.commit('notify', {
+                  title: 'Error',
+                  message: 'Link already exists!',
+                  type: 'error',
+                  position: 'bottom-right',
+                  duration: 3000
+                });
                 this.$refs.network.disableEditMode();
                 return;
               }
@@ -139,8 +143,6 @@
         addEdgeMode: false,
         linksMap: {},
         nodesIndexes: {},
-        message: '',
-        snackbar: false,
         nextId: 0x0000000000000000
       }
     },
@@ -179,7 +181,7 @@
           }
 
           for (const link of responses[1].data) {
-            this.addLink(link)
+            this.addLink(link, false)
           }
 
           this.checkDevicesReachable();
@@ -224,6 +226,12 @@
         this.socket = new WebSocket("ws://localhost:5555/v1.0/topology/ws");
         this.socket.onopen = () => {
           console.log("connected to ws://localhost:5555/v1.0/topology/ws");
+          this.$store.commit('notify', {
+            title: 'Connected to server',
+            type: 'info',
+            position: 'bottom-right',
+            duration: 3000
+          });
         };
 
         this.socket.onmessage = ({data}) => {
@@ -234,7 +242,7 @@
               this.addDevice({id: parsedData.params[0].dpid});
               break;
             case 'event_link_add':
-              this.addLink(parsedData.params[0]);
+              this.addLink(parsedData.params[0], true);
               this.checkDevicesReachable();
               break;
             case 'event_link_delete':
@@ -255,7 +263,7 @@
 
         this.socket.onerror = (error) => {
           console.error(error)
-        }
+        };
       },
       initLinkMap() {
         this.linksMap = {};
@@ -285,12 +293,20 @@
           links: []
         };
 
+        this.$store.commit('notify', {
+          title: 'Device added',
+          message: `${nodeData.label} successfully added`,
+          type: 'success',
+          position: 'bottom-right',
+          duration: 3000
+        });
+
         setTimeout(() => {
           this.nodes[this.nodesIndexes[nodeData.id]].x = undefined;
           this.nodes[this.nodesIndexes[nodeData.id]].y = undefined;
         }, 50);
       },
-      addLink(link) {
+      addLink(link, showNotification) {
         if (!(this.linksMap[link.src.dpid + '_' + link.dst.dpid] || this.linksMap[link.dst.dpid + '_' + link.src.dpid])) {
           this.linksMap[link.src.dpid + '_' + link.dst.dpid] = true;
           this.edges.push({
@@ -331,9 +347,19 @@
           if (this.devices[link.dst.dpid].ports.findIndex(e => e.name === link.dst.name) === -1) {
             this.devices[link.dst.dpid].ports.push(link.dst);
           }
+
+          if (showNotification)
+            this.$store.commit('notify', {
+              title: 'Link added',
+              message: `Link ${link.src.name}_${link.dst.name} successfully added`,
+              type: 'success',
+              position: 'bottom-right',
+              duration: 3000
+            });
         }
       },
       deleteDevice(id) {
+        const label = this.devices[id].label;
         this.nodes.splice(this.nodesIndexes[id], 1);
         this.nodesIndexes = {};
         for (let i = 0; i < this.nodes.length; i++) {
@@ -358,10 +384,23 @@
             this.nodes[this.nodesIndexes[device]].image = '/images/router-unactive.png';
           }
         }
+
+        this.$store.commit('notify', {
+          title: 'Delete completed',
+          message: `${label} deleted`,
+          type: 'success',
+          position: 'bottom-right',
+          duration: 3000
+        });
       },
       deleteLink(link) {
         if (!(this.linksMap[link.src.dpid + '_' + link.dst.dpid] || this.linksMap[link.dst.dpid + '_' + link.src.dpid]))
           return;
+
+        const index = this.edges.findIndex(e => {
+          return (e.from === link.src.dpid && e.to === link.dst.dpid) || (e.from === link.dst.dpid && e.to === link.src.dpid)
+        });
+        const label = 'Link ' + this.edges[index].label;
 
         this.edges = this.edges.filter(e => {
           return !((e.from === link.src.dpid && e.to === link.dst.dpid) || (e.from === link.dst.dpid && e.to === link.src.dpid))
@@ -381,6 +420,14 @@
         }
 
         this.checkDevicesReachable();
+
+        this.$store.commit('notify', {
+          title: 'Delete completed',
+          message: `${label} deleted`,
+          type: 'success',
+          position: 'bottom-right',
+          duration: 3000
+        });
       },
       async onDeleteButtonClicked() {
         this.$store.commit("setLoading", true);
@@ -497,14 +544,6 @@
           this.$refs.network.redraw();
         }, 200);
       },
-      snackbar() {
-        if (this.snackbar) {
-          setTimeout(() => {
-            this.snackbar = false;
-            this.message = '';
-          }, 3000);
-        }
-      }
     }
   }
 </script>
@@ -544,21 +583,6 @@
     position: absolute;
     right: 20px;
     top: 70px;
-  }
-
-  .snackbar {
-    position: absolute;
-    bottom: 0;
-    right: 0;
-    height: 40px;
-    width: 100%;
-    max-width: 400px;
-    background-color: #f05458;
-    border-top-left-radius: 10px;
-    display: flex;
-    text-align: left;
-    align-items: center;
-    padding: 10px;
   }
 
 </style>

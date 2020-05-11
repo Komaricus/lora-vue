@@ -16,46 +16,8 @@ p {
   color: $primary;
 }
 
-button {
-  font-size: 16px;
-  padding: 7px;
-  color: $lime;
-  border: 2px solid $lime;
-  border-radius: 5px;
-  cursor: pointer;
-  background-color: white;
-  transition: all 0.2s ease-out;
-}
-
-button.text {
-  border: none;
-}
-
-button.icon {
-  font-size: 24px;
-  width: 40px;
-  height: 40px;
-  border: none;
-  padding: 0;
-  color: $primary;
-}
-
-button.icon:hover {
-  background-color: $secondary;
-  border-radius: 30px;
-  color: $primary;
-}
-
-button:hover {
-  color: white;
-  background-color: $lime;
-}
-
-button:disabled {
-  color: lightgray;
-  border: 2px solid lightgray;
-  background-color: white;
-  cursor: default;
+i {
+  font-size: 18px;
 }
 
 a {
@@ -67,20 +29,10 @@ a {
   font-weight: bold;
 }
 
-.loader {
-  color: white;
-  position: absolute;
-  top: calc(50% - 60px);
-  left: 50%;
-  z-index: 1000;
-  font-size: 60px;
-}
-
-.overlay {
-  opacity: 0.46;
-  background-color: rgb(33, 33, 33);
-  height: 100vh;
-  width: 100vw;
-  position: absolute;
-  z-index: 999;
+.devices-table {
+  .el-table__body-wrapper {
+    tr {
+      cursor: pointer !important;
+    }
+  }
 }

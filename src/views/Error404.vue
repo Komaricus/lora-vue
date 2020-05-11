@@ -3,7 +3,7 @@
     <h1>Oops...</h1>
     <span>404</span>
     <p>Page Not Found</p>
-    <button type="button" @click="$router.push('/')">Take me back</button>
+    <el-button type="primary" @click="$router.push('/')">Take me back</el-button>
   </div>
 </template>
 
