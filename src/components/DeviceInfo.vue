@@ -83,22 +83,23 @@
       </el-collapse-item>
       <el-collapse-item name="4" v-if="!device.hasOwnProperty('link')">
         <template slot="title">
-          <p class="bold">Ping</p>
+          <p class="bold">Terminal</p>
         </template>
-        <p>Type device name below. Example: <span class="bold">s1 - for Device 1</span></p>
-        <div style="color: #2c3e50; display: flex; padding: 10px 0">
-          <span style="font-size: 14px; padding-top: 8px">ping s{{ dpidToInt(device.id)}}</span>
-          <el-input placeholder="Type here..." v-model="ping" style="padding: 0 10px"/>
-          <el-button :disabled="!ping || loading" type="primary" @click="doPing" style="max-width: 100%">Ping
-          </el-button>
-        </div>
-        <div class="ping-output" :class="{ show: output.length || loading }">
-          <div v-if="loading" style="margin: 20px auto; text-align: center">
+<!--        <div style="display: flex; justify-content: flex-end">-->
+<!--          <el-button style="margin-bottom: 10px" icon="mdi mdi-open-in-new" circle></el-button>-->
+<!--        </div>-->
+
+        <div id="terminal" class="terminal-output">
+          <div v-html="output"></div>
+          <div v-if="loading" class="loading">
             <i class="el-icon-loading"></i>
             <br>
             <span>Loading...</span>
           </div>
-          <div v-else v-html="output"/>
+          <label style="color: #42b983">
+            &gt;
+            <input v-model="command" v-on:keyup.enter="runCommand" class="terminal-input"/>
+          </label>
         </div>
 
       </el-collapse-item>
@@ -158,7 +159,7 @@
     },
     data() {
       return {
-        ping: '',
+        command: '',
         loading: false,
         output: '',
         activeNames: ['1', '2', '3', '4', '5']
@@ -173,7 +174,7 @@
     },
     watch: {
       device() {
-        this.ping = '';
+        this.command = '';
         this.loading = false;
         this.output = '';
       },
@@ -206,13 +207,27 @@
       dpidToInt(dpid) {
         return Number("0x" + dpid);
       },
-      async doPing() {
+      scroll() {
+        const objDiv = document.getElementById("terminal");
+        objDiv.scrollTop = 99999999;
+      },
+      async runCommand() {
+        if (this.loading) return;
+
+        const command = this.command;
+        this.command = '';
+
+        this.output += `<span style="color: #42b983;">&gt; ${command}</span>`;
+        setTimeout(() => {
+          this.scroll();
+        }, 20);
+
         this.loading = true;
-        await axios.post(`${config.api}/nodes/s${this.dpidToInt(this.device.id)}/cmd`, 'ping ' + this.ping, {
+        await axios.post(`${config.api}/nodes/s${this.dpidToInt(this.device.id)}/cmd`, command, {
             headers: {'Content-Type': 'text/plain'}
           })
           .then(response => {
-            this.output = response.data.replace('data.', `data.<br>`).split('ms').join(`ms<br>`).replace('---', `<br>---`).replace('statistics ---', `statistics ---<br>`);
+            this.output += `<br>${response.data}`;
             this.$store.commit('notify', {
               title: 'Command completed',
               type: 'success',
@@ -233,6 +248,7 @@
           .finally(() => {
             setTimeout(() => {
               this.loading = false;
+              this.scroll();
             }, 100)
           });
       }
@@ -247,17 +263,32 @@
     padding-bottom: 10px;
   }
 
-  .ping-output {
-    display: none;
+  .terminal-output {
+    display: block;
     max-width: 600px;
     white-space: normal;
     background-color: $primary;
     color: white;
     padding: 10px;
     font-size: 16px;
+    height: 400px;
+    overflow-y: auto;
   }
 
-  .show {
-    display: block;
+  .terminal-input {
+    background-color: $primary;
+    color: #42b983;
+    border: none;
+    outline: 0;
+    font-size: 16px;
+    width: calc(100% - 15.11px);
+  }
+
+  .loading {
+    margin: 0 auto;
+    padding: 20px 0;
+    text-align: center;
+    background-color: $primary;
+    color: white;
   }
 </style>
