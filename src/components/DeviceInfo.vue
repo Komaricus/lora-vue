@@ -85,9 +85,9 @@
         <template slot="title">
           <p class="bold">Terminal</p>
         </template>
-<!--        <div style="display: flex; justify-content: flex-end">-->
-<!--          <el-button style="margin-bottom: 10px" icon="mdi mdi-open-in-new" circle></el-button>-->
-<!--        </div>-->
+        <!--        <div style="display: flex; justify-content: flex-end">-->
+        <!--          <el-button style="margin-bottom: 10px" icon="mdi mdi-open-in-new" circle></el-button>-->
+        <!--        </div>-->
 
         <div id="terminal" class="terminal-output">
           <div v-html="output"></div>
@@ -224,7 +224,10 @@
 
         this.loading = true;
         await axios.post(`${config.api}/nodes/s${this.dpidToInt(this.device.id)}/cmd`, command, {
-            headers: {'Content-Type': 'text/plain'}
+            headers: {'Content-Type': 'text/plain'},
+            params: {
+              timeout: 5
+            }
           })
           .then(response => {
             this.output += `<br>${response.data}`;

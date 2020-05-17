@@ -2,8 +2,6 @@
   <div>
     <Navbar @add-node-clicked="onAddNodeButtonClicked"
             @add-link-clicked="onAddLinkButtonClicked"/>
-    <div v-if="addNodeMode" class="tooltip">Click anywhere to add device.</div>
-    <div v-if="addEdgeMode" class="tooltip">Click on a device and drag the link to another device to connect them.</div>
     <div class="wrapper">
       <div class="left-menu" :class="{'active' : showLeftMenu }">
         <device-info :device="selected" @device-selected="onDeviceSelected" @delete-clicked="onDeleteButtonClicked"/>
@@ -18,7 +16,7 @@
                @deselect-edge="onEdgeDeselected"
                @select-node="onNodeSelected"
                @deselect-node="onNodeDeselected"
-               @nodes-add="addNodeMode = false"
+               @nodes-add="addNodeMode = false; "
                @edge-add="addEdgeMode = false"
                @drag-start="onDragStart"
                @click="onClick"/>
@@ -74,6 +72,7 @@
             addNode: (nodeData, callback) => {
               this.$store.commit("setLoading", true);
               this.addNodeMode = false;
+              this.$message.closeAll();
               nodeData.id = this.generateNewID();
 
               axios.post(`${config.api}/switch/s${this.dpidToInt(nodeData.id)}`, {
@@ -92,6 +91,7 @@
             },
             addEdge: (edgeData, callback) => {
               this.addEdgeMode = false;
+              this.$message.closeAll();
 
               if (edgeData.from === edgeData.to) {
                 this.$store.commit('notify', {
@@ -150,11 +150,13 @@
       const switches = axios.get(`${config.back}/v1.0/topology/switches`);
       const links = axios.get(`${config.back}/v1.0/topology/links`);
       const hosts = axios.get(`${config.back}/v1.0/topology/hosts`);
+      // const events = axios.get(`${config.api}/events`);
 
       this.$store.commit("setLoading", true);
       await axios.all([switches, links, hosts])
         .then(responses => {
           // console.log(responses[2]);
+          // console.log(responses[3]);
 
           for (let i = 0; i < responses[0].data.length; i++) {
             const device = responses[0].data[i];
@@ -200,6 +202,7 @@
       this.connect();
 
       setTimeout(() => {
+        this.$message.closeAll();
         this.$store.commit("setLoading", false);
       }, 300);
     },
@@ -510,11 +513,35 @@
         this.$refs.network.addEdgeMode();
         this.addNodeMode = false;
         this.addEdgeMode = true;
+        this.$message.closeAll();
+        this.$message({
+          showClose: true,
+          message: 'Click on a device and drag the link to another device to connect them.',
+          type: 'Info',
+          offset: 7.5,
+          duration: 0,
+          onClose: () => {
+            this.addEdgeMode = false;
+            this.$refs.network.disableEditMode();
+          }
+        });
       },
       onAddNodeButtonClicked() {
         this.$refs.network.addNodeMode();
         this.addEdgeMode = false;
         this.addNodeMode = true;
+        this.$message.closeAll();
+        this.$message({
+          showClose: true,
+          message: 'Click anywhere to add device.',
+          type: 'Info',
+          offset: 7.5,
+          duration: 0,
+          onClose: () => {
+            this.addNodeMode = false;
+            this.$refs.network.disableEditMode();
+          }
+        });
       },
       onClick($event) {
         this.position.x = $event.pointer.canvas.x;

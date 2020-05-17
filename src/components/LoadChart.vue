@@ -6,6 +6,8 @@
 
 <script>
   import VueApexCharts from 'vue-apexcharts'
+  import axios from "axios"
+  import config from "@/config"
 
   export default {
     name: "LoadChart",
@@ -68,13 +70,26 @@
       )
     },
     watch: {
-      device() {
-        this.$refs.chart.updateOptions({
+      async device() {
+        await this.$refs.chart.updateOptions({
             title: {
               text: 'Package load for ' + this.device.label
             }
           }
-        )
+        );
+
+        await axios.get(`${config.api}/events/${+this.device.id}`, {
+            params: {
+              perPage: 100,
+              page: 1
+            }
+          })
+          .then(({data}) => {
+            console.log(data)
+          })
+          .catch(error => {
+            console.error(error)
+          })
       }
     }
   }
