@@ -16,7 +16,7 @@
                @deselect-edge="onEdgeDeselected"
                @select-node="onNodeSelected"
                @deselect-node="onNodeDeselected"
-               @nodes-add="addNodeMode = false; "
+               @nodes-add="addNodeMode = false"
                @edge-add="addEdgeMode = false"
                @drag-start="onDragStart"
                @click="onClick"/>
@@ -92,6 +92,7 @@
             addEdge: (edgeData, callback) => {
               this.addEdgeMode = false;
               this.$message.closeAll();
+              console.log(edgeData);
 
               if (edgeData.from === edgeData.to) {
                 this.$store.commit('notify', {
@@ -120,8 +121,8 @@
 
               this.$store.commit("setLoading", true);
               axios.post(`${config.api}/link`, {
-                  a: 's' + this.dpidToInt(edgeData.from),
-                  b: 's' + this.dpidToInt(edgeData.to),
+                  a: this.getNodeNameByDpid(edgeData.from),
+                  b: this.getNodeNameByDpid(edgeData.to),
                 })
                 .then(() => {
                   this.$refs.network.disableEditMode();
@@ -143,21 +144,19 @@
         addEdgeMode: false,
         linksMap: {},
         nodesIndexes: {},
-        nextId: 0x0000000000000000
+        nextId: 0x0000000000000000,
+        nextHostId: 0x0000000000000000,
+        hosts: {}
       }
     },
     async created() {
       const switches = axios.get(`${config.back}/v1.0/topology/switches`);
       const links = axios.get(`${config.back}/v1.0/topology/links`);
       const hosts = axios.get(`${config.back}/v1.0/topology/hosts`);
-      // const events = axios.get(`${config.api}/events`);
 
       this.$store.commit("setLoading", true);
       await axios.all([switches, links, hosts])
         .then(responses => {
-          // console.log(responses[2]);
-          // console.log(responses[3]);
-
           for (let i = 0; i < responses[0].data.length; i++) {
             const device = responses[0].data[i];
             if (this.nextId < parseInt('0x' + device.dpid, 16))
@@ -183,10 +182,15 @@
           }
 
           for (const link of responses[1].data) {
-            this.addLink(link, false)
+            this.addLink(link, false);
+          }
+
+          for (const host of responses[2].data) {
+            this.addHost(host);
           }
 
           this.checkDevicesReachable();
+          this.checkHostsReachable()
         })
         .catch(error => {
           console.error(error);
@@ -207,6 +211,13 @@
       }, 300);
     },
     methods: {
+      getNodeNameByDpid(dpid) {
+        if (dpid.includes('host')) {
+          return 'h' + Number(dpid.replace('host', ''));
+        } else {
+          return 's' + this.dpidToInt(dpid);
+        }
+      },
       dpidToInt(dpid) {
         return Number("0x" + dpid);
       },
@@ -222,6 +233,21 @@
             this.devices[device].image = '/images/router.png';
             this.nodes[this.nodesIndexes[device]].physics = true;
             this.nodes[this.nodesIndexes[device]].image = '/images/router.png';
+          }
+        }
+      },
+      checkHostsReachable() {
+        for (const host in this.hosts) {
+          if (!this.hosts[host].links.length) {
+            this.hosts[host].physics = false;
+            this.hosts[host].image = '/images/host-unactive.png';
+            this.nodes[this.nodesIndexes[host]].physics = false;
+            this.nodes[this.nodesIndexes[host]].image = '/images/host-unactive.png';
+          } else if (!this.hosts[host].physics) {
+            this.hosts[host].physics = true;
+            this.hosts[host].image = '/images/host.png';
+            this.nodes[this.nodesIndexes[host]].physics = true;
+            this.nodes[this.nodesIndexes[host]].image = '/images/host.png';
           }
         }
       },
@@ -275,6 +301,48 @@
             || this.linksMap[link.to + '_' + link.from]))
             this.linksMap[link.from + '_' + link.to] = true;
         }
+      },
+      addHost(hostData) {
+        hostData.dpid = this.generateNewHostID();
+        hostData.id = 'host' + this.dpidToInt(hostData.dpid);
+        hostData.label = 'Host ' + this.dpidToInt(hostData.dpid);
+        hostData.image = '/images/host.png';
+        hostData.shape = 'image';
+        hostData.physics = false;
+        hostData.host = true;
+        hostData.links = [];
+
+        if (hostData.port.dpid !== undefined) {
+          hostData.links.push({
+            id: hostData.port.dpid,
+            label: this.devices[hostData.port.dpid].label,
+            srcPort: `h${this.dpidToInt(hostData.dpid)}-eth${hostData.links.length}`,
+            dstPort: hostData.port.name,
+          });
+
+          this.edges.push({
+            label: `h${this.dpidToInt(hostData.dpid)}-eth${hostData.links.length}_${hostData.port.name}`,
+            from: hostData.id,
+            to: hostData.port.dpid,
+            length: 300,
+            arrows: {
+              to: {
+                enabled: true,
+                type: 'triangle'
+              },
+              from: {
+                enabled: true,
+                type: 'triangle'
+              }
+            }
+          });
+
+          this.linksMap[hostData.id + '_' + hostData.port.dpid] = true;
+        }
+
+        this.nodes.push(hostData);
+        this.nodesIndexes[hostData.id] = this.nodes.length - 1;
+        this.hosts[hostData.id] = Object.assign({}, hostData);
       },
       addDevice(nodeData) {
         nodeData.label = 'Device ' + this.dpidToInt(nodeData.id);
@@ -437,8 +505,8 @@
         if (this.selected.link) {
           await axios.delete(`${config.api}/link`, {
               data: {
-                a: `s${this.dpidToInt(this.selected.to)}`,
-                b: `s${this.dpidToInt(this.selected.from)}`
+                a: this.getNodeNameByDpid(this.selected.to),
+                b: this.getNodeNameByDpid(this.selected.from)
               }
             })
             .catch(error => {
@@ -490,8 +558,14 @@
       onNodeSelected($event) {
         if (this.selected.id !== undefined && !this.selected.link)
           this.nodes[this.nodesIndexes[this.selected.id]].image = this.selected.image;
-        this.nodes[this.nodesIndexes[$event.nodes[0]]].image = '/images/router-selected.png';
-        this.selected = this.devices[$event.nodes[0]];
+        if ($event.nodes[0].includes('host')) {
+          this.nodes[this.nodesIndexes[$event.nodes[0]]].image = '/images/host-selected.png';
+          this.selected = this.hosts[$event.nodes[0]];
+        } else {
+          this.nodes[this.nodesIndexes[$event.nodes[0]]].image = '/images/router-selected.png';
+          this.selected = this.devices[$event.nodes[0]];
+        }
+
         this.$store.commit('setLeftMenu', true);
       },
       onNodeDeselected($event) {
@@ -550,6 +624,13 @@
       generateNewID() {
         this.nextId++;
         let id = this.nextId.toString(16);
+        id = "0".repeat(16 - id.length) + id;
+
+        return id;
+      },
+      generateNewHostID() {
+        this.nextHostId++;
+        let id = this.nextHostId.toString(16);
         id = "0".repeat(16 - id.length) + id;
 
         return id;

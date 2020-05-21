@@ -6,7 +6,15 @@
       <p v-if="!device.hasOwnProperty('link')"><span class="bold">ID: </span>{{device.id}}</p>
     </div>
     <el-collapse v-model="activeNames" style="color: #2c3e50">
-      <el-collapse-item name="1">
+      <el-collapse-item name="0" v-if="device.hasOwnProperty('host')">
+        <template slot="title">
+          <p class="bold">Info</p>
+        </template>
+        <p><span class="bold">MAC:</span> {{ device.mac }}</p>
+        <p><span class="bold">IPv4:</span> {{ device.ipv4.join(', ') }}</p>
+        <p><span class="bold">IPv6:</span> {{ device.ipv6.join(', ') }}</p>
+      </el-collapse-item>
+      <el-collapse-item name="1" v-if="!device.hasOwnProperty('host')">
         <template slot="title">
           <p class="bold">Ports</p>
         </template>
@@ -31,7 +39,7 @@
         </el-table>
         <p v-else>No ports specified</p>
       </el-collapse-item>
-      <el-collapse-item name="2">
+      <el-collapse-item name="2" v-if="!device.hasOwnProperty('host')">
         <template slot="title">
           <p class="bold">Links</p>
         </template>
@@ -68,7 +76,7 @@
         </el-table>
         <p v-else>No links specified</p>
       </el-collapse-item>
-      <el-collapse-item name="3" v-if="!device.hasOwnProperty('link')">
+      <el-collapse-item name="3" v-if="!device.hasOwnProperty('link') && !device.hasOwnProperty('host')">
         <template slot="title">
           <p class="bold">Charts</p>
         </template>
@@ -85,10 +93,6 @@
         <template slot="title">
           <p class="bold">Terminal</p>
         </template>
-        <!--        <div style="display: flex; justify-content: flex-end">-->
-        <!--          <el-button style="margin-bottom: 10px" icon="mdi mdi-open-in-new" circle></el-button>-->
-        <!--        </div>-->
-
         <div id="terminal" class="terminal-output">
           <div v-html="output"></div>
           <div v-if="loading" class="loading">
@@ -103,7 +107,7 @@
         </div>
 
       </el-collapse-item>
-      <el-collapse-item name="5">
+      <el-collapse-item name="5" v-if="!device.hasOwnProperty('host')">
         <template slot="title">
           <p class="bold">Settings</p>
         </template>
@@ -223,7 +227,8 @@
         }, 20);
 
         this.loading = true;
-        await axios.post(`${config.api}/nodes/s${this.dpidToInt(this.device.id)}/cmd`, command, {
+        const nodeName = this.device.host ? 'h' + this.dpidToInt(this.device.dpid) : 's' + this.dpidToInt(this.device.id);
+        await axios.post(`${config.api}/nodes/${nodeName}/cmd`, command, {
             headers: {'Content-Type': 'text/plain'},
             params: {
               timeout: 5
