@@ -77,19 +77,6 @@
             }
           }
         );
-
-        await axios.get(`${config.api}/events/${+this.device.id}`, {
-            params: {
-              perPage: 100,
-              page: 1
-            }
-          })
-          .then(({data}) => {
-            console.log(data)
-          })
-          .catch(error => {
-            console.error(error)
-          })
       }
     }
   }

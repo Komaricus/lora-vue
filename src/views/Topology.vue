@@ -584,7 +584,10 @@
         this.onNodeSelected({nodes: [$event.id]});
       },
       onAddLinkButtonClicked() {
-        this.$refs.network.addEdgeMode();
+        setTimeout(() => {
+          this.$refs.network.addEdgeMode();
+        }, 100);
+
         this.addNodeMode = false;
         this.addEdgeMode = true;
         this.$message.closeAll();
@@ -601,7 +604,10 @@
         });
       },
       onAddNodeButtonClicked() {
-        this.$refs.network.addNodeMode();
+        setTimeout(() => {
+          this.$refs.network.addNodeMode();
+        }, 100);
+
         this.addEdgeMode = false;
         this.addNodeMode = true;
         this.$message.closeAll();

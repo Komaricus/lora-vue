@@ -83,9 +83,48 @@
         <el-tabs type="border-card">
           <el-tab-pane label="Battery">
             <battery-chart :device="device"/>
+            <el-button type="primary" @click="openChargeLogDialog">Charge Log</el-button>
+
+            <el-dialog :title="`${this.device.label} Charge Log`" :visible.sync="chargeLogDialog">
+              <el-table :data="charges">
+                <el-table-column property="id" label="Log ID"></el-table-column>
+                <el-table-column property="dpid" label="Device ID"></el-table-column>
+                <el-table-column property="charge" label="Charge"></el-table-column>
+                <el-table-column property="ts" label="Datetime"></el-table-column>
+              </el-table>
+              <el-row type="flex" justify="center" style="margin-top: 20px">
+                <el-pagination
+                    background
+                    layout="prev, pager, next"
+                    :total="totalCharges"
+                    @current-change="loadCharges"
+                    :current-page.sync="currentPage">
+                </el-pagination>
+              </el-row>
+            </el-dialog>
           </el-tab-pane>
           <el-tab-pane label="Load">
             <load-chart :device="device"/>
+            <el-button type="primary" @click="openEventsLogDialog">Events Log</el-button>
+
+            <el-dialog :title="`${this.device.label} Events Log`" :visible.sync="eventsLogDialog">
+              <el-table :data="events">
+                <el-table-column property="from_mac" label="From MAC"></el-table-column>
+                <el-table-column property="from_port" label="From Port"></el-table-column>
+                <el-table-column property="to_mac" label="To MAC"></el-table-column>
+                <el-table-column property="to_port" label="To Port"></el-table-column>
+                <el-table-column property="ts" label="Datetime"></el-table-column>
+              </el-table>
+              <el-row type="flex" justify="center" style="margin-top: 20px">
+                <el-pagination
+                    background
+                    layout="prev, pager, next"
+                    :total="totalEvents"
+                    @current-change="loadEvents"
+                    :current-page.sync="currentPage">
+                </el-pagination>
+              </el-row>
+            </el-dialog>
           </el-tab-pane>
         </el-tabs>
       </el-collapse-item>
@@ -166,7 +205,14 @@
         command: '',
         loading: false,
         output: '',
-        activeNames: ['1', '2', '3', '4', '5']
+        activeNames: ['1', '2', '3', '4', '5'],
+        eventsLogDialog: false,
+        events: [],
+        totalEvents: 100,
+        chargeLogDialog: false,
+        charges: [],
+        totalCharges: 100,
+        currentPage: 1
       }
     },
     created() {
@@ -187,6 +233,78 @@
       }
     },
     methods: {
+      async loadCharges(page) {
+        await axios.get(`${config.api}/events/${+this.device.id}/charge_events`, {
+            params: {
+              perpage: 10,
+              page: page - 1
+            }
+          })
+          .then(({data}) => {
+            this.charges = data;
+          })
+          .catch(error => {
+            console.error(error);
+          });
+      },
+      async openChargeLogDialog() {
+        this.currentPage = 1;
+        this.chargeLogDialog = true;
+
+        const total = axios.get(`${config.api}/events/${+this.device.id}/charge_events/total`);
+        const events = axios.get(`${config.api}/events/${+this.device.id}/charge_events`, {
+          params: {
+            perpage: 10,
+            page: 0
+          }
+        });
+
+        await axios.all([total, events])
+          .then(responses => {
+            this.totalCharges = responses[0].data[0].total;
+            this.charges = responses[1].data;
+          })
+          .catch(error => {
+            console.error(error);
+          });
+
+      },
+      async loadEvents(page) {
+        await axios.get(`${config.api}/events/${+this.device.id}`, {
+            params: {
+              perpage: 10,
+              page: page - 1
+            }
+          })
+          .then(({data}) => {
+            this.events = data;
+          })
+          .catch(error => {
+            console.error(error);
+          });
+      },
+      async openEventsLogDialog() {
+        this.currentPage = 1;
+        this.eventsLogDialog = true;
+
+        const total = axios.get(`${config.api}/events/${+this.device.id}/total`);
+        const events = axios.get(`${config.api}/events/${+this.device.id}`, {
+          params: {
+            perpage: 10,
+            page: 0
+          }
+        });
+
+        await axios.all([total, events])
+          .then(responses => {
+            this.totalEvents = responses[0].data[0].total;
+            this.events = responses[1].data;
+          })
+          .catch(error => {
+            console.error(error);
+          });
+
+      },
       open() {
         const isDevice = this.device.link === undefined;
         this.$confirm(`Are you sure you want to delete ${isDevice ? this.device.label : 'Link ' + this.device.label}?`,
