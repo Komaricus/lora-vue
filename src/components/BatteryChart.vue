@@ -1,5 +1,12 @@
 <template>
   <div id="chart">
+    <el-switch
+        v-model="realtime"
+        active-color="#42b983"
+        inactive-color="#ff4949"
+        active-text="Realtime"
+        style="padding-bottom: 10px">
+    </el-switch>
     <apexchart ref="chart" type="line" height="350" :options="chartOptions" :series="series"></apexchart>
   </div>
 </template>
@@ -19,16 +26,27 @@
     },
     data() {
       return {
+        realtime: true,
         series: [{
           name: "Battery charge %",
-          data: [100, 97, 86, 73, 61, 54, 45, 33, 20]
+          data: []
         }],
         chartOptions: {
           chart: {
             height: 350,
             type: 'line',
+            animations: {
+              enabled: true,
+              easing: 'linear',
+              dynamicAnimation: {
+                speed: 1000
+              }
+            },
             zoom: {
               enabled: false
+            },
+            toolbar: {
+              show: false
             }
           },
           colors: ['#42b983'],
@@ -36,7 +54,7 @@
             enabled: false
           },
           stroke: {
-            curve: 'straight',
+            curve: 'smooth'
           },
           title: {
             text: '',
@@ -49,31 +67,113 @@
             },
           },
           xaxis: {
-            categories: ['15:00', '16:00', '17:00', '18:00', '19:00', '20:00', '21:00', '22:00', '23:00'],
+            categories: []
           },
           yaxis: {
             max: 100,
             min: 0
-          }
+          },
+          legend: {
+            show: false
+          },
         },
       }
     },
-    mounted() {
-      this.$refs.chart.updateOptions({
-          title: {
-            text: 'Battery trend for ' + this.device.label
-          }
-        }
-      )
-    },
-    watch: {
-      device() {
+    methods: {
+      setRealtimeData() {
+        if (this.$refs.chart === undefined) return;
+
         this.$refs.chart.updateOptions({
             title: {
               text: 'Battery trend for ' + this.device.label
+            },
+            xaxis: {
+              categories: this.device.charges.range.slice(Math.max(this.device.charges.range.length - 10, 0))
             }
           }
-        )
+        );
+
+        this.$refs.chart.updateSeries([{
+          data: this.device.charges.data.slice(Math.max(this.device.charges.data.length - 10, 0))
+        }]);
+
+        setInterval(() => {
+          if (this.$refs.chart === undefined || !this.realtime) return;
+          this.$refs.chart.updateOptions({
+              xaxis: {
+                categories: this.device.charges.range.slice(Math.max(this.device.charges.range.length - 10, 0))
+              }
+            }
+          );
+          this.$refs.chart.updateSeries([{
+            data: this.device.charges.data.slice(Math.max(this.device.charges.data.length - 10, 0))
+          }]);
+        }, 500);
+      },
+      setAllData() {
+        if (this.$refs.chart === undefined) return;
+
+        this.$refs.chart.updateOptions({
+            title: {
+              text: 'Battery trend for ' + this.device.label
+            },
+            xaxis: {
+              categories: this.device.charges.range
+            }
+          }
+        );
+
+        this.$refs.chart.updateSeries([{
+          data: this.device.charges.data
+        }]);
+      }
+    },
+    mounted() {
+      if (this.realtime) {
+        this.setRealtimeData();
+      } else {
+        this.setAllData();
+      }
+    },
+    watch: {
+      device() {
+        if (this.realtime) {
+          this.setRealtimeData();
+        } else {
+          this.setAllData();
+        }
+      },
+      realtime() {
+        if (this.realtime) {
+          this.$refs.chart.updateOptions({
+            chart: {
+              zoom: {
+                enabled: false
+              },
+              toolbar: {
+                show: false
+              }
+            }
+          });
+
+          this.setRealtimeData();
+        } else {
+          this.$refs.chart.updateOptions({
+            chart: {
+              zoom: {
+                type: 'x',
+                enabled: true,
+                autoScaleYaxis: true
+              },
+              toolbar: {
+                show: true,
+                autoSelected: 'zoom'
+              }
+            }
+          });
+        }
+
+        this.setAllData();
       }
     }
   }

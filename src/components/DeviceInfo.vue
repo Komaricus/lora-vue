@@ -234,7 +234,7 @@
     },
     methods: {
       async loadCharges(page) {
-        await axios.get(`${config.api}/events/${+this.device.id}/charge_events`, {
+        await axios.get(`${config.api}/events/${this.dpidToInt(this.device.id)}/charge_events`, {
             params: {
               perpage: 10,
               page: page - 1
@@ -251,8 +251,8 @@
         this.currentPage = 1;
         this.chargeLogDialog = true;
 
-        const total = axios.get(`${config.api}/events/${+this.device.id}/charge_events/total`);
-        const events = axios.get(`${config.api}/events/${+this.device.id}/charge_events`, {
+        const total = axios.get(`${config.api}/events/${this.dpidToInt(this.device.id)}/charge_events/total`);
+        const events = axios.get(`${config.api}/events/${this.dpidToInt(this.device.id)}/charge_events`, {
           params: {
             perpage: 10,
             page: 0
@@ -270,7 +270,7 @@
 
       },
       async loadEvents(page) {
-        await axios.get(`${config.api}/events/${+this.device.id}`, {
+        await axios.get(`${config.api}/events/${this.dpidToInt(this.device.id)}`, {
             params: {
               perpage: 10,
               page: page - 1
@@ -287,8 +287,8 @@
         this.currentPage = 1;
         this.eventsLogDialog = true;
 
-        const total = axios.get(`${config.api}/events/${+this.device.id}/total`);
-        const events = axios.get(`${config.api}/events/${+this.device.id}`, {
+        const total = axios.get(`${config.api}/events/${this.dpidToInt(this.device.id)}/total`);
+        const events = axios.get(`${config.api}/events/${this.dpidToInt(this.device.id)}`, {
           params: {
             perpage: 10,
             page: 0

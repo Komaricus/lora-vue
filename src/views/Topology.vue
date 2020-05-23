@@ -92,7 +92,6 @@
             addEdge: (edgeData, callback) => {
               this.addEdgeMode = false;
               this.$message.closeAll();
-              console.log(edgeData);
 
               if (edgeData.from === edgeData.to) {
                 this.$store.commit('notify', {
@@ -177,7 +176,11 @@
                 image: '/images/router.png',
                 shape: 'image',
                 ports: device.ports,
-                links: []
+                links: [],
+                charges: {
+                  data: [],
+                  range: []
+                }
               };
           }
 
@@ -190,7 +193,8 @@
           }
 
           this.checkDevicesReachable();
-          this.checkHostsReachable()
+          this.checkHostsReachable();
+          this.getBatteryCharge();
         })
         .catch(error => {
           console.error(error);
@@ -211,6 +215,27 @@
       }, 300);
     },
     methods: {
+      getBatteryCharge() {
+        setInterval(() => {
+          axios.get(`${config.api}/events/charge_state`)
+            .then(({data}) => {
+              for (const device of data) {
+                let charge = (device.charge / 1000).toFixed(0);
+                if (charge < 0) charge = 0;
+                const tick = {y: charge, x: new Date().toLocaleTimeString()};
+                this.devices[device.dpid].charges.data.push(tick);
+                if (this.devices[device.dpid].charges.data.length > 120) {
+                  this.devices[device.dpid].charges.data.shift();
+                  this.devices[device.dpid].charges.range.shift();
+                }
+                this.devices[device.dpid].charges.range.push(tick.x);
+              }
+            })
+            .catch(error => {
+              console.error(error)
+            });
+        }, 1000);
+      },
       getNodeNameByDpid(dpid) {
         if (dpid.includes('host')) {
           return 'h' + Number(dpid.replace('host', ''));
@@ -361,7 +386,11 @@
           image: '/images/router-unactive.png',
           shape: 'image',
           ports: [],
-          links: []
+          links: [],
+          charges: {
+            data: [],
+            range: []
+          }
         };
 
         this.$store.commit('notify', {
