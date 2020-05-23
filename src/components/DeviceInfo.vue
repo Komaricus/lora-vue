@@ -319,7 +319,7 @@
             title: 'Delete canceled',
             type: 'info',
             position: 'bottom-right',
-            duration: 2000
+            duration: config.NOTIFICATION_DURATION
           });
         });
       },
@@ -349,7 +349,7 @@
         await axios.post(`${config.api}/nodes/${nodeName}/cmd`, command, {
             headers: {'Content-Type': 'text/plain'},
             params: {
-              timeout: 5
+              timeout: config.CMD_TIMEOUT
             }
           })
           .then(response => {
@@ -358,7 +358,7 @@
               title: 'Command completed',
               type: 'success',
               position: 'bottom-right',
-              duration: 2000
+              duration: config.NOTIFICATION_DURATION
             });
           })
           .catch(error => {
@@ -368,7 +368,7 @@
               message: 'Something went wrong',
               type: 'error',
               position: 'bottom-right',
-              duration: 2000
+              duration: config.NOTIFICATION_DURATION
             });
           })
           .finally(() => {

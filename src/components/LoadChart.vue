@@ -6,8 +6,6 @@
 
 <script>
   import VueApexCharts from 'vue-apexcharts'
-  import axios from "axios"
-  import config from "@/config"
 
   export default {
     name: "LoadChart",

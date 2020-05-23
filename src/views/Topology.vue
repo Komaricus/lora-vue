@@ -99,7 +99,7 @@
                   message: 'Cyclic links are forbidden!',
                   type: 'error',
                   position: 'bottom-right',
-                  duration: 3000
+                  duration: config.NOTIFICATION_DURATION
                 });
                 this.$refs.network.disableEditMode();
                 return;
@@ -112,7 +112,7 @@
                   message: 'Link already exists!',
                   type: 'error',
                   position: 'bottom-right',
-                  duration: 3000
+                  duration: config.NOTIFICATION_DURATION
                 });
                 this.$refs.network.disableEditMode();
                 return;
@@ -220,11 +220,11 @@
           axios.get(`${config.api}/events/charge_state`)
             .then(({data}) => {
               for (const device of data) {
-                let charge = (device.charge / 1000).toFixed(0);
+                let charge = (device.charge / config.CHARGE_DIVIDER).toFixed(0);
                 if (charge < 0) charge = 0;
                 const tick = {y: charge, x: new Date().toLocaleTimeString()};
                 this.devices[device.dpid].charges.data.push(tick);
-                if (this.devices[device.dpid].charges.data.length > 120) {
+                if (this.devices[device.dpid].charges.data.length > config.BATTERY_CHART_MAX_ITEMS) {
                   this.devices[device.dpid].charges.data.shift();
                   this.devices[device.dpid].charges.range.shift();
                 }
@@ -234,7 +234,7 @@
             .catch(error => {
               console.error(error)
             });
-        }, 1000);
+        }, config.BATTERY_CHART_UPDATE_TIMEOUT);
       },
       getNodeNameByDpid(dpid) {
         if (dpid.includes('host')) {
@@ -284,7 +284,7 @@
             title: 'Connected to server',
             type: 'info',
             position: 'bottom-right',
-            duration: 3000
+            duration: config.NOTIFICATION_DURATION
           });
         };
 
@@ -349,7 +349,7 @@
             label: `h${this.dpidToInt(hostData.dpid)}-eth${hostData.links.length}_${hostData.port.name}`,
             from: hostData.id,
             to: hostData.port.dpid,
-            length: 300,
+            length: config.TOPOLOGY_EDGES_LENGTH,
             arrows: {
               to: {
                 enabled: true,
@@ -398,7 +398,7 @@
           message: `${nodeData.label} successfully added`,
           type: 'success',
           position: 'bottom-right',
-          duration: 3000
+          duration: config.NOTIFICATION_DURATION
         });
 
         setTimeout(() => {
@@ -413,7 +413,7 @@
             label: `${link.src.name}_${link.dst.name}`,
             from: link.src.dpid,
             to: link.dst.dpid,
-            length: 300,
+            length: config.TOPOLOGY_EDGES_LENGTH,
             arrows: {
               to: {
                 enabled: true,
@@ -454,7 +454,7 @@
               message: `Link ${link.src.name}_${link.dst.name} successfully added`,
               type: 'success',
               position: 'bottom-right',
-              duration: 3000
+              duration: config.NOTIFICATION_DURATION
             });
         }
       },
@@ -490,7 +490,7 @@
           message: `${label} deleted`,
           type: 'success',
           position: 'bottom-right',
-          duration: 3000
+          duration: config.NOTIFICATION_DURATION
         });
       },
       deleteLink(link) {
@@ -526,7 +526,7 @@
           message: `${label} deleted`,
           type: 'success',
           position: 'bottom-right',
-          duration: 3000
+          duration: config.NOTIFICATION_DURATION
         });
       },
       async onDeleteButtonClicked() {

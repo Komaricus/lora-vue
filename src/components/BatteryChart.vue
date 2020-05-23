@@ -13,6 +13,7 @@
 
 <script>
   import VueApexCharts from 'vue-apexcharts'
+  import config from "../config";
 
   export default {
     name: "BatteryChart",
@@ -88,27 +89,27 @@
               text: 'Battery trend for ' + this.device.label
             },
             xaxis: {
-              categories: this.device.charges.range.slice(Math.max(this.device.charges.range.length - 10, 0))
+              categories: this.device.charges.range.slice(Math.max(this.device.charges.range.length - config.BATTERY_CHART_REALTIME_MAX_ITEMS, 0))
             }
           }
         );
 
         this.$refs.chart.updateSeries([{
-          data: this.device.charges.data.slice(Math.max(this.device.charges.data.length - 10, 0))
+          data: this.device.charges.data.slice(Math.max(this.device.charges.data.length - config.BATTERY_CHART_REALTIME_MAX_ITEMS, 0))
         }]);
 
         setInterval(() => {
           if (this.$refs.chart === undefined || !this.realtime) return;
           this.$refs.chart.updateOptions({
               xaxis: {
-                categories: this.device.charges.range.slice(Math.max(this.device.charges.range.length - 10, 0))
+                categories: this.device.charges.range.slice(Math.max(this.device.charges.range.length - config.BATTERY_CHART_REALTIME_MAX_ITEMS, 0))
               }
             }
           );
           this.$refs.chart.updateSeries([{
-            data: this.device.charges.data.slice(Math.max(this.device.charges.data.length - 10, 0))
+            data: this.device.charges.data.slice(Math.max(this.device.charges.data.length - config.BATTERY_CHART_REALTIME_MAX_ITEMS, 0))
           }]);
-        }, 500);
+        }, config.BATTERY_CHART_UPDATE_TIMEOUT);
       },
       setAllData() {
         if (this.$refs.chart === undefined) return;
