@@ -180,6 +180,10 @@
                 charges: {
                   data: [],
                   range: []
+                },
+                events: {
+                  data: [],
+                  range: []
                 }
               };
           }
@@ -195,6 +199,7 @@
           this.checkDevicesReachable();
           this.checkHostsReachable();
           this.getBatteryCharge();
+          this.getEvents();
         })
         .catch(error => {
           console.error(error);
@@ -215,6 +220,41 @@
       }, 300);
     },
     methods: {
+      getEvents() {
+        setInterval(() => {
+          let now = new Date();
+          let x = now.toLocaleTimeString();
+          let end = now.toISOString().substring(0, 19);
+          now.setSeconds(now.getSeconds() - config.EVENTS_CHART_UPDATE_TIMEOUT / 1000);
+          let start = now.toISOString().substring(0, 19);
+          axios.get(`${config.api}/count/events`, {
+              params: {
+                start: start,
+                end: end
+              }
+            })
+            .then(({data}) => {
+              for (const dpid in this.devices) {
+                const index = data.findIndex(e => e.dpid == this.dpidToInt(dpid));
+                if (index === -1) {
+                  this.devices[dpid].events.data.push({y: 0, x: x});
+                  this.devices[dpid].events.range.push(x);
+                } else {
+                  const tick = {y: data[index].events, x: x};
+                  this.devices[dpid].events.data.push(tick);
+                  this.devices[dpid].events.range.push(x);
+                  if (this.devices[dpid].events.data.length > config.EVENTS_CHART_MAX_ITEMS) {
+                    this.devices[dpid].events.data.shift();
+                    this.devices[dpid].events.range.shift();
+                  }
+                }
+              }
+            })
+            .catch(error => {
+              console.error(error)
+            });
+        }, config.EVENTS_CHART_UPDATE_TIMEOUT);
+      },
       getBatteryCharge() {
         setInterval(() => {
           axios.get(`${config.api}/events/charge_state`)
@@ -388,6 +428,10 @@
           ports: [],
           links: [],
           charges: {
+            data: [],
+            range: []
+          },
+          events: {
             data: [],
             range: []
           }
@@ -674,7 +718,6 @@
         if ($event.nodes.length)
           this.onNodeSelected({nodes: $event.nodes});
       }
-
     },
     computed: {
       showLeftMenu() {

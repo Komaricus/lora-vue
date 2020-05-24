@@ -1,5 +1,5 @@
 <template>
-  <div id="chart">
+  <div id="batteryChart">
     <el-switch
         v-model="realtime"
         active-color="#42b983"
@@ -7,7 +7,7 @@
         active-text="Realtime"
         style="padding-bottom: 10px">
     </el-switch>
-    <apexchart ref="chart" type="line" height="350" :options="chartOptions" :series="series"></apexchart>
+    <apexchart ref="batteryChart" type="line" height="350" :options="chartOptions" :series="series"></apexchart>
   </div>
 </template>
 
@@ -82,9 +82,9 @@
     },
     methods: {
       setRealtimeData() {
-        if (this.$refs.chart === undefined) return;
+        if (this.$refs.batteryChart === undefined) return;
 
-        this.$refs.chart.updateOptions({
+        this.$refs.batteryChart.updateOptions({
             title: {
               text: 'Battery trend for ' + this.device.label
             },
@@ -94,27 +94,27 @@
           }
         );
 
-        this.$refs.chart.updateSeries([{
+        this.$refs.batteryChart.updateSeries([{
           data: this.device.charges.data.slice(Math.max(this.device.charges.data.length - config.BATTERY_CHART_REALTIME_MAX_ITEMS, 0))
         }]);
 
         setInterval(() => {
-          if (this.$refs.chart === undefined || !this.realtime) return;
-          this.$refs.chart.updateOptions({
+          if (this.$refs.batteryChart === undefined || !this.realtime) return;
+          this.$refs.batteryChart.updateOptions({
               xaxis: {
                 categories: this.device.charges.range.slice(Math.max(this.device.charges.range.length - config.BATTERY_CHART_REALTIME_MAX_ITEMS, 0))
               }
             }
           );
-          this.$refs.chart.updateSeries([{
+          this.$refs.batteryChart.updateSeries([{
             data: this.device.charges.data.slice(Math.max(this.device.charges.data.length - config.BATTERY_CHART_REALTIME_MAX_ITEMS, 0))
           }]);
         }, config.BATTERY_CHART_UPDATE_TIMEOUT);
       },
       setAllData() {
-        if (this.$refs.chart === undefined) return;
+        if (this.$refs.batteryChart === undefined) return;
 
-        this.$refs.chart.updateOptions({
+        this.$refs.batteryChart.updateOptions({
             title: {
               text: 'Battery trend for ' + this.device.label
             },
@@ -124,7 +124,7 @@
           }
         );
 
-        this.$refs.chart.updateSeries([{
+        this.$refs.batteryChart.updateSeries([{
           data: this.device.charges.data
         }]);
       }
@@ -146,7 +146,7 @@
       },
       realtime() {
         if (this.realtime) {
-          this.$refs.chart.updateOptions({
+          this.$refs.batteryChart.updateOptions({
             chart: {
               zoom: {
                 enabled: false
@@ -159,7 +159,7 @@
 
           this.setRealtimeData();
         } else {
-          this.$refs.chart.updateOptions({
+          this.$refs.batteryChart.updateOptions({
             chart: {
               zoom: {
                 type: 'x',

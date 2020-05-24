@@ -103,28 +103,8 @@
               </el-row>
             </el-dialog>
           </el-tab-pane>
-          <el-tab-pane label="Load">
-            <load-chart :device="device"/>
-            <el-button type="primary" @click="openEventsLogDialog">Events Log</el-button>
-
-            <el-dialog :title="`${this.device.label} Events Log`" :visible.sync="eventsLogDialog">
-              <el-table :data="events">
-                <el-table-column property="from_mac" label="From MAC"></el-table-column>
-                <el-table-column property="from_port" label="From Port"></el-table-column>
-                <el-table-column property="to_mac" label="To MAC"></el-table-column>
-                <el-table-column property="to_port" label="To Port"></el-table-column>
-                <el-table-column property="ts" label="Datetime"></el-table-column>
-              </el-table>
-              <el-row type="flex" justify="center" style="margin-top: 20px">
-                <el-pagination
-                    background
-                    layout="prev, pager, next"
-                    :total="totalEvents"
-                    @current-change="loadEvents"
-                    :current-page.sync="currentPage">
-                </el-pagination>
-              </el-row>
-            </el-dialog>
+          <el-tab-pane label="Events">
+            <events-chart :device="device"/>
           </el-tab-pane>
         </el-tabs>
       </el-collapse-item>
@@ -187,7 +167,7 @@
   import axios from "axios"
   import config from "@/config"
   import BatteryChart from "./BatteryChart";
-  import LoadChart from "./LoadChart";
+  import EventsChart from "./EventsChart";
 
   export default {
     name: "device-info",
@@ -198,7 +178,7 @@
     },
     components: {
       "battery-chart": BatteryChart,
-      "load-chart": LoadChart
+      "events-chart": EventsChart
     },
     data() {
       return {
@@ -206,9 +186,6 @@
         loading: false,
         output: '',
         activeNames: ['1', '2', '3', '4', '5'],
-        eventsLogDialog: false,
-        events: [],
-        totalEvents: 100,
         chargeLogDialog: false,
         charges: [],
         totalCharges: 100,
@@ -263,42 +240,6 @@
           .then(responses => {
             this.totalCharges = responses[0].data[0].total;
             this.charges = responses[1].data;
-          })
-          .catch(error => {
-            console.error(error);
-          });
-
-      },
-      async loadEvents(page) {
-        await axios.get(`${config.api}/events/${this.dpidToInt(this.device.id)}`, {
-            params: {
-              perpage: 10,
-              page: page - 1
-            }
-          })
-          .then(({data}) => {
-            this.events = data;
-          })
-          .catch(error => {
-            console.error(error);
-          });
-      },
-      async openEventsLogDialog() {
-        this.currentPage = 1;
-        this.eventsLogDialog = true;
-
-        const total = axios.get(`${config.api}/events/${this.dpidToInt(this.device.id)}/total`);
-        const events = axios.get(`${config.api}/events/${this.dpidToInt(this.device.id)}`, {
-          params: {
-            perpage: 10,
-            page: 0
-          }
-        });
-
-        await axios.all([total, events])
-          .then(responses => {
-            this.totalEvents = responses[0].data[0].total;
-            this.events = responses[1].data;
           })
           .catch(error => {
             console.error(error);
