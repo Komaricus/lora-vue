@@ -130,8 +130,6 @@
             range = this.device.stats['OUTPUT:CONTROLLER'].range.slice(Math.max(this.device.stats['OUTPUT:CONTROLLER'].range.length - config.STATS_CHART_REALTIME_MAX_ITEMS, 0));
           }
 
-          console.log(range);
-
           this.$refs.statsChart.updateOptions({
               xaxis: {
                 categories: range
@@ -175,7 +173,7 @@
         for (const stat in this.device.stats) {
           series.push({
             name: stat,
-            data: this.device.stats[stat].data.slice(Math.max(this.device.stats[stat].range.length - config.STATS_CHART_REALTIME_MAX_ITEMS, 0))
+            data: this.device.stats[stat].data
           });
         }
 
