@@ -184,7 +184,8 @@
                 events: {
                   data: [],
                   range: []
-                }
+                },
+                stats: {}
               };
           }
 
@@ -200,6 +201,7 @@
           this.checkHostsReachable();
           this.getBatteryCharge();
           this.getEvents();
+          this.getStats();
         })
         .catch(error => {
           console.error(error);
@@ -220,6 +222,35 @@
       }, 300);
     },
     methods: {
+      getStats() {
+        setInterval(() => {
+          for (const dpid in this.devices) {
+            axios.get(`${config.back}/stats/flow/${this.dpidToInt(dpid)}`)
+              .then(({data}) => {
+                for (const action of data[this.dpidToInt(dpid)]) {
+                  if (!this.devices[dpid].stats[action.actions[0]]) {
+                    this.devices[dpid].stats[action.actions[0]] = {
+                      data: [],
+                      range: []
+                    };
+                  }
+
+                  const tick = {x: new Date().toLocaleTimeString(), y: action.packet_count};
+                  this.devices[dpid].stats[action.actions[0]].data.push(tick);
+                  this.devices[dpid].stats[action.actions[0]].range.push(tick.x);
+
+                  if (this.devices[dpid].stats[action.actions[0]].data.length > config.STATS_CHART_MAX_ITEMS) {
+                    this.devices[dpid].stats[action.actions[0]].data.shift();
+                    this.devices[dpid].stats[action.actions[0]].range.shift();
+                  }
+                }
+              })
+              .catch(error => {
+                console.error(error)
+              });
+          }
+        }, config.STATS_CHART_UPDATE_TIMEOUT);
+      },
       getEvents() {
         setInterval(() => {
           let now = new Date();
@@ -264,11 +295,11 @@
                 if (charge < 0) charge = 0;
                 const tick = {y: charge, x: new Date().toLocaleTimeString()};
                 this.devices[device.dpid].charges.data.push(tick);
+                this.devices[device.dpid].charges.range.push(tick.x);
                 if (this.devices[device.dpid].charges.data.length > config.BATTERY_CHART_MAX_ITEMS) {
                   this.devices[device.dpid].charges.data.shift();
                   this.devices[device.dpid].charges.range.shift();
                 }
-                this.devices[device.dpid].charges.range.push(tick.x);
               }
             })
             .catch(error => {
@@ -434,7 +465,8 @@
           events: {
             data: [],
             range: []
-          }
+          },
+          stats: {}
         };
 
         this.$store.commit('notify', {

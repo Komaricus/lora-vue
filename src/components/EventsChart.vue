@@ -178,7 +178,7 @@
           this.$refs.eventsChart.updateSeries([{
             data: this.device.events.data.slice(Math.max(this.device.events.data.length - config.EVENTS_CHART_REALTIME_MAX_ITEMS, 0))
           }]);
-        }, config.EVENTS_CHART_UPDATE_TIMEOUT);
+        }, 1000);
       },
       setAllData() {
         if (this.$refs.eventsChart === undefined) return;
@@ -241,9 +241,9 @@
               }
             }
           });
-        }
 
-        this.setAllData();
+          this.setAllData();
+        }
       }
     }
   }

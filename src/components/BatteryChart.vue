@@ -172,9 +172,9 @@
               }
             }
           });
-        }
 
-        this.setAllData();
+          this.setAllData();
+        }
       }
     }
   }

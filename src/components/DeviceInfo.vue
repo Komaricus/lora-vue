@@ -106,6 +106,9 @@
           <el-tab-pane label="Events">
             <events-chart :device="device"/>
           </el-tab-pane>
+          <el-tab-pane label="Packets">
+            <stats-chart :device="device"/>
+          </el-tab-pane>
         </el-tabs>
       </el-collapse-item>
       <el-collapse-item name="4" v-if="!device.hasOwnProperty('link')">
@@ -168,6 +171,7 @@
   import config from "@/config"
   import BatteryChart from "./BatteryChart";
   import EventsChart from "./EventsChart";
+  import StatsChart from "./StatsChart";
 
   export default {
     name: "device-info",
@@ -178,7 +182,8 @@
     },
     components: {
       "battery-chart": BatteryChart,
-      "events-chart": EventsChart
+      "events-chart": EventsChart,
+      "stats-chart": StatsChart
     },
     data() {
       return {
