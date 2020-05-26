@@ -1,15 +1,21 @@
 <template>
-  <div id="terminal" class="terminal-output">
-    <div v-html="output"></div>
-    <div v-if="loading" class="loading">
-      <i class="el-icon-loading"></i>
-      <br>
-      <span>Loading...</span>
+  <div>
+    <div id="terminal" class="terminal-output" :style="fullscreen ? {height: '835px'} : styleObject">
+      <div v-html="output"></div>
+      <div v-if="loading" class="loading">
+        <i class="el-icon-loading"></i>
+        <br>
+        <span>Loading...</span>
+      </div>
+      <label style="color: #42b983">
+        &gt;
+        <input v-model="command" v-on:keyup.enter="runCommand" class="terminal-input"/>
+      </label>
     </div>
-    <label style="color: #42b983">
-      &gt;
-      <input v-model="command" v-on:keyup.enter="runCommand" class="terminal-input"/>
-    </label>
+    <el-button v-if="!fullscreen" type="default" size="medium" @click="openTerminal" style="margin-top: 10px"
+               icon="mdi mdi-open-in-new">
+      Open in new tab
+    </el-button>
   </div>
 </template>
 
@@ -22,16 +28,37 @@
     props: {
       device: {
         type: Object
+      },
+      fullscreen: {
+        type: Boolean,
+        default: false
       }
     },
     data() {
       return {
         command: '',
         loading: false,
-        output: ''
+        output: '',
+        styleObject: {
+          maxWidth: '600px',
+          height: '400px'
+        }
+      }
+    },
+    created() {
+      if (localStorage.getItem('output')) {
+        this.output = localStorage.getItem('output');
+        localStorage.removeItem('output');
+        setTimeout(() => {
+          this.scroll();
+        }, 20);
       }
     },
     methods: {
+      openTerminal() {
+        localStorage.setItem('output', this.output);
+        window.open(`${window.location.origin}/terminal/${this.device.id}`)
+      },
       dpidToInt(dpid) {
         return Number("0x" + dpid);
       },

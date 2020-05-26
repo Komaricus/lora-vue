@@ -45,7 +45,6 @@ export default new Vuex.Store({
           state.messages.shift()
         }, 100)
       }
-
     }
   },
   actions: {

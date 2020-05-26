@@ -115,11 +115,7 @@
         <template slot="title">
           <p class="bold">Terminal</p>
         </template>
-
-        <terminal style="max-width: 600px; height: 400px" :device="device"/>
-        <el-button type="default" size="medium" @click="openTerminal" style="margin-top: 10px" icon="mdi mdi-open-in-new">
-         Open in new tab
-        </el-button>
+        <terminal :fullscreen="false" :device="device"/>
       </el-collapse-item>
       <el-collapse-item name="5" v-if="!device.hasOwnProperty('host')">
         <template slot="title">
@@ -206,9 +202,6 @@
       }
     },
     methods: {
-      openTerminal() {
-        window.open(`${window.location.origin}/terminal/${this.device.id}`)
-      },
       async loadCharges(page) {
         await axios.get(`${config.api}/events/${this.dpidToInt(this.device.id)}/charge_events`, {
             params: {
