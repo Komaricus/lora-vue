@@ -23,6 +23,10 @@
     props: {
       device: {
         type: Object
+      },
+      status: {
+        type: Boolean,
+        default: false
       }
     },
     data() {
@@ -99,7 +103,7 @@
         }]);
 
         setInterval(() => {
-          if (this.$refs.batteryChart === undefined || !this.realtime) return;
+          if (this.$refs.batteryChart === undefined || !this.realtime || !this.status) return;
           this.$refs.batteryChart.updateOptions({
               xaxis: {
                 categories: this.device.charges.range.slice(Math.max(this.device.charges.range.length - config.BATTERY_CHART_REALTIME_MAX_ITEMS, 0))

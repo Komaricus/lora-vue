@@ -45,6 +45,10 @@
     props: {
       device: {
         type: Object
+      },
+      status: {
+        type: Boolean,
+        default: false
       }
     },
     data() {
@@ -168,7 +172,7 @@
         }]);
 
         setInterval(() => {
-          if (this.$refs.eventsChart === undefined || !this.realtime) return;
+          if (this.$refs.eventsChart === undefined || !this.realtime || !this.status) return;
           this.$refs.eventsChart.updateOptions({
               xaxis: {
                 categories: this.device.events.range.slice(Math.max(this.device.events.range.length - config.EVENTS_CHART_REALTIME_MAX_ITEMS, 0))

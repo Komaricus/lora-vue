@@ -1,10 +1,13 @@
 <template>
   <div>
     <Navbar @add-node-clicked="onAddNodeButtonClicked"
-            @add-link-clicked="onAddLinkButtonClicked"/>
+            @add-link-clicked="onAddLinkButtonClicked"
+            @emulation-status-changed="onEmulationStatusChanged"
+            :status="status"/>
     <div class="wrapper">
       <div class="left-menu" :class="{'active' : showLeftMenu }">
-        <device-info :device="selected" @device-selected="onDeviceSelected" @delete-clicked="onDeleteButtonClicked"/>
+        <device-info :device="selected" @device-selected="onDeviceSelected" @delete-clicked="onDeleteButtonClicked"
+                     :status="status"/>
       </div>
       <Network ref="network"
                class="network"
@@ -42,6 +45,7 @@
     },
     data() {
       return {
+        status: false,
         nodes: [],
         edges: [],
         options: {
@@ -82,11 +86,16 @@
                   }
                 })
                 .then(() => {
+                  this.addDevice({id: nodeData.id});
                   this.$refs.network.disableEditMode();
+                  this.setLocalTopology();
                   callback(nodeData);
                 })
                 .catch(error => {
                   console.error(error)
+                })
+                .finally(() => {
+                  this.$store.commit("setLoading", false);
                 });
             },
             addEdge: (edgeData, callback) => {
@@ -124,11 +133,26 @@
                   b: this.getNodeNameByDpid(edgeData.to),
                 })
                 .then(() => {
+                  this.addLink({
+                    src: {
+                      dpid: edgeData.from,
+                      name: this.generateInterfaceName(edgeData.from)
+                    },
+                    dst: {
+                      dpid: edgeData.to,
+                      name: this.generateInterfaceName(edgeData.from)
+                    }
+                  }, true);
+                  this.checkDevicesReachable();
                   this.$refs.network.disableEditMode();
+                  this.setLocalTopology();
                   callback(edgeData);
                 })
                 .catch(error => {
                   console.error(error)
+                })
+                .finally(() => {
+                  this.$store.commit("setLoading", false);
                 });
             }
           }
@@ -145,76 +169,45 @@
         nodesIndexes: {},
         nextId: 0x0000000000000000,
         nextHostId: 0x0000000000000000,
-        hosts: {}
+        hosts: {},
+        links: []
       }
     },
     async created() {
-      const switches = axios.get(`${config.back}/v1.0/topology/switches`);
-      const links = axios.get(`${config.back}/v1.0/topology/links`);
-      const hosts = axios.get(`${config.back}/v1.0/topology/hosts`);
-
       this.$store.commit("setLoading", true);
-      await axios.all([switches, links, hosts])
-        .then(responses => {
-          for (let i = 0; i < responses[0].data.length; i++) {
-            const device = responses[0].data[i];
-            if (this.nextId < parseInt('0x' + device.dpid, 16))
-              this.nextId = parseInt('0x' + device.dpid, 16);
+      await axios.get(`${config.api}/net/status`)
+        .then(async ({data}) => {
+          this.status = data.status;
+          if (data.status) {
+            const switches = axios.get(`${config.back}/v1.0/topology/switches`);
+            const links = axios.get(`${config.back}/v1.0/topology/links`);
+            const hosts = axios.get(`${config.back}/v1.0/topology/hosts`);
 
-            this.nodes.push({
-              id: device.dpid,
-              label: 'Device ' + this.dpidToInt(device.dpid),
-              image: '/images/router.png',
-              shape: 'image'
-            });
-            this.nodesIndexes[device.dpid] = i;
+            await axios.all([switches, links, hosts])
+              .then(responses => {
+                this.initTopology(responses[0].data, responses[1].data, responses[2].data);
+                this.setLocalTopology();
+              })
+              .catch(error => {
+                console.error(error);
+                //Adds mocks
+                // this.nodes = mocks.nodes;
+                // this.edges = mocks.edges;
+                // this.devices = mocks.devices;
+                // this.linksMap = mocks.linksMap;
+                // this.nodesIndexes = mocks.nodesIndexes;
+              });
 
-            if (this.devices[device.dpid] === undefined)
-              this.devices[device.dpid] = {
-                id: device.dpid,
-                label: 'Device ' + this.dpidToInt(device.dpid),
-                image: '/images/router.png',
-                shape: 'image',
-                ports: device.ports,
-                links: [],
-                charges: {
-                  data: [],
-                  range: []
-                },
-                events: {
-                  data: [],
-                  range: []
-                },
-                stats: {}
-              };
+            this.connect();
+          } else {
+            let switches, links, hosts;
+            ({switches, links, hosts} = this.getLocalTopology());
+            this.initTopology(switches, links, hosts);
           }
-
-          for (const link of responses[1].data) {
-            this.addLink(link, false);
-          }
-
-          for (const host of responses[2].data) {
-            this.addHost(host);
-          }
-
-          this.checkDevicesReachable();
-          this.checkHostsReachable();
-          this.getBatteryCharge();
-          this.getEvents();
-          this.getStats();
         })
         .catch(error => {
-          console.error(error);
-          //Adds mocks
-          this.nodes = mocks.nodes;
-          this.edges = mocks.edges;
-          this.devices = mocks.devices;
-          this.linksMap = mocks.linksMap;
-          this.nodesIndexes = mocks.nodesIndexes;
+          console.error(error)
         });
-
-      this.options.physics.enabled = true;
-      this.connect();
 
       setTimeout(() => {
         this.$message.closeAll();
@@ -222,8 +215,88 @@
       }, 300);
     },
     methods: {
+      initTopology(switches, links, hosts) {
+        for (let i = 0; i < switches.length; i++) {
+          const device = switches[i];
+          if (this.nextId < parseInt('0x' + device.dpid, 16))
+            this.nextId = parseInt('0x' + device.dpid, 16);
+
+          this.nodes.push({
+            id: device.dpid,
+            label: 'Device ' + this.dpidToInt(device.dpid),
+            image: '/images/router.png',
+            shape: 'image'
+          });
+          this.nodesIndexes[device.dpid] = i;
+
+          if (this.devices[device.dpid] === undefined)
+            this.devices[device.dpid] = {
+              id: device.dpid,
+              label: 'Device ' + this.dpidToInt(device.dpid),
+              image: '/images/router.png',
+              shape: 'image',
+              ports: device.ports,
+              links: [],
+              charges: {
+                data: [],
+                range: []
+              },
+              events: {
+                data: [],
+                range: []
+              },
+              stats: {}
+            };
+        }
+
+        for (const link of links) {
+          this.addLink(link, false);
+        }
+
+        for (const host of hosts) {
+          this.addHost(host);
+        }
+
+        this.checkDevicesReachable();
+        this.checkHostsReachable();
+        this.getBatteryCharge();
+        this.getEvents();
+        this.getStats();
+
+        this.options.physics.enabled = true;
+      },
+      async onEmulationStatusChanged(status) {
+        this.$store.commit("setLoading", true);
+        if (status) {
+          await axios.get(`${config.api}/net/start`)
+            .then(() => {
+              console.log('Starting emulation...');
+              this.status = status;
+              this.connect();
+            })
+            .catch(error => {
+              console.error(error);
+            })
+            .finally(() => {
+              this.$store.commit("setLoading", false);
+            });
+        } else {
+          await axios.get(`${config.api}/net/stop`)
+            .then(() => {
+              console.log('Stopping emulation...');
+              this.status = status;
+            })
+            .catch(error => {
+              console.error(error);
+            })
+            .finally(() => {
+              this.$store.commit("setLoading", false);
+            });
+        }
+      },
       getStats() {
         setInterval(() => {
+          if (!this.status) return;
           for (const dpid in this.devices) {
             axios.get(`${config.back}/stats/flow/${this.dpidToInt(dpid)}`)
               .then(({data}) => {
@@ -253,6 +326,7 @@
       },
       getEvents() {
         setInterval(() => {
+          if (!this.status) return;
           let now = new Date();
           let x = now.toLocaleTimeString();
           let end = now.toISOString().substring(0, 19);
@@ -288,9 +362,11 @@
       },
       getBatteryCharge() {
         setInterval(() => {
+          if (!this.status) return;
           axios.get(`${config.api}/events/charge_state`)
             .then(({data}) => {
               for (const device of data) {
+                if (!this.devices[device.dpid]) continue;
                 let charge = (device.charge / config.CHARGE_DIVIDER).toFixed(0);
                 if (charge < 0) charge = 0;
                 const tick = {y: charge, x: new Date().toLocaleTimeString()};
@@ -362,24 +438,24 @@
         this.socket.onmessage = ({data}) => {
           const parsedData = JSON.parse(data);
           console.log(parsedData);
-          switch (parsedData.method) {
-            case 'event_switch_enter':
-              this.addDevice({id: parsedData.params[0].dpid});
-              break;
-            case 'event_link_add':
-              this.addLink(parsedData.params[0], true);
-              this.checkDevicesReachable();
-              break;
-            case 'event_link_delete':
-              this.deleteLink(parsedData.params[0]);
-              break;
-            case 'event_switch_leave':
-              this.deleteDevice(parsedData.params[0].dpid);
-              break;
-          }
+          // switch (parsedData.method) {
+          //   case 'event_switch_enter':
+          //     this.addDevice({id: parsedData.params[0].dpid});
+          //     break;
+          //   case 'event_link_add':
+          //     this.addLink(parsedData.params[0], true);
+          //     this.checkDevicesReachable();
+          //     break;
+          // case 'event_link_delete':
+          //   this.deleteLink(parsedData.params[0]);
+          //   break;
+          // case 'event_switch_leave':
+          //   this.deleteDevice(parsedData.params[0].dpid);
+          //   break;
+          // }
 
           this.socket.send(JSON.stringify({"id": data.id, "jsonrpc": "2.0", "result": ""}));
-          this.$store.commit("setLoading", false);
+          // this.$store.commit("setLoading", false);
         };
 
         this.socket.onclose = (event) => {
@@ -434,6 +510,13 @@
           });
 
           this.linksMap[hostData.id + '_' + hostData.port.dpid] = true;
+
+          this.devices[hostData.port.dpid].links.push({
+            id: hostData.id,
+            label: hostData.label,
+            srcPort: hostData.port.name,
+            dstPort: `h${this.dpidToInt(hostData.dpid)}-eth${hostData.links.length}`,
+          });
         }
 
         this.nodes.push(hostData);
@@ -484,6 +567,7 @@
       },
       addLink(link, showNotification) {
         if (!(this.linksMap[link.src.dpid + '_' + link.dst.dpid] || this.linksMap[link.dst.dpid + '_' + link.src.dpid])) {
+          this.links.push(link);
           this.linksMap[link.src.dpid + '_' + link.dst.dpid] = true;
           this.edges.push({
             label: `${link.src.name}_${link.dst.name}`,
@@ -546,6 +630,10 @@
           return e.from !== id && e.to !== id
         });
 
+        this.links = this.links.filter(e => {
+          return e.src.dpid !== id && e.dst.dpid !== id
+        });
+
         this.initLinkMap();
         delete this.devices[id];
 
@@ -568,6 +656,8 @@
           position: 'bottom-right',
           duration: config.NOTIFICATION_DURATION
         });
+
+        this.setLocalTopology();
       },
       deleteLink(link) {
         if (!(this.linksMap[link.src.dpid + '_' + link.dst.dpid] || this.linksMap[link.dst.dpid + '_' + link.src.dpid]))
@@ -604,6 +694,12 @@
           position: 'bottom-right',
           duration: config.NOTIFICATION_DURATION
         });
+
+        const deleteIndex = this.links.findIndex(e => {
+          return (e.from === link.src.dpid && e.to === link.dst.dpid) || (e.from === link.dst.dpid && e.to === link.src.dpid)
+        });
+        this.links.splice(deleteIndex, 1);
+        this.setLocalTopology();
       },
       async onDeleteButtonClicked() {
         this.$store.commit("setLoading", true);
@@ -614,13 +710,30 @@
                 b: this.getNodeNameByDpid(this.selected.from)
               }
             })
+            .then(() => {
+              this.deleteLink({
+                src: {
+                  dpid: this.selected.from
+                },
+                dst: {
+                  dpid: this.selected.to
+                }
+              });
+            })
             .catch(error => {
-              console.error(error)
+              console.error(error);
+            }).finally(() => {
+              this.$store.commit("setLoading", false);
             });
         } else {
           await axios.delete(`${config.api}/switch/s${this.dpidToInt(this.selected.id)}`)
+            .then(() => {
+              this.deleteDevice(this.selected.id);
+            })
             .catch(error => {
-              console.error(error)
+              console.error(error);
+            }).finally(() => {
+              this.$store.commit("setLoading", false);
             });
         }
 
@@ -746,9 +859,48 @@
 
         return id;
       },
+      generateInterfaceName(dpid) {
+        return `${this.getNodeNameByDpid(dpid)}-eth${this.devices[dpid].links.length + 1}`
+      },
       onDragStart($event) {
         if ($event.nodes.length)
           this.onNodeSelected({nodes: $event.nodes});
+      },
+      setLocalTopology() {
+        let switches = [];
+        for (const dpid in this.devices) {
+          switches.push({
+            dpid: dpid,
+            ports: this.devices[dpid].ports
+          });
+        }
+
+        // console.log('switches: ', switches);
+        localStorage.setItem('switches', JSON.stringify(switches));
+
+        // console.log(this.links);
+        localStorage.setItem('links', JSON.stringify(this.links));
+
+        let hosts = [];
+        for (const hostName in this.hosts) {
+          hosts.push({
+            ipv4: this.hosts[hostName].ipv4,
+            ipv6: this.hosts[hostName].ipv6,
+            mac: this.hosts[hostName].mac,
+            port: this.hosts[hostName].port,
+          });
+        }
+
+        // console.log(hosts);
+        localStorage.setItem('hosts', JSON.stringify(hosts));
+
+      },
+      getLocalTopology() {
+        return {
+          switches: localStorage.getItem('switches') ? JSON.parse(localStorage.getItem('switches')) : [],
+          links: localStorage.getItem('links') ? JSON.parse(localStorage.getItem('links')) : [],
+          hosts: localStorage.getItem('hosts') ? JSON.parse(localStorage.getItem('hosts')) : []
+        }
       }
     },
     computed: {

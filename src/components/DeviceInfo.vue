@@ -39,7 +39,7 @@
         </el-table>
         <p v-else>No ports specified</p>
       </el-collapse-item>
-      <el-collapse-item name="2" v-if="!device.hasOwnProperty('host')">
+      <el-collapse-item name="2" >
         <template slot="title">
           <p class="bold">Links</p>
         </template>
@@ -80,9 +80,9 @@
         <template slot="title">
           <p class="bold">Charts</p>
         </template>
-        <el-tabs type="border-card">
+        <el-tabs type="border-card" stretch v-model="tab">
           <el-tab-pane label="Battery">
-            <battery-chart :device="device"/>
+            <battery-chart v-if="tab === '0'" :device="device" :status="status"/>
             <el-button type="primary" @click="openChargeLogDialog">Charge Log</el-button>
 
             <el-dialog :title="`${this.device.label} Charge Log`" :visible.sync="chargeLogDialog">
@@ -104,14 +104,14 @@
             </el-dialog>
           </el-tab-pane>
           <el-tab-pane label="Events">
-            <events-chart :device="device"/>
+            <events-chart v-if="tab === '1'" :device="device" :status="status"/>
           </el-tab-pane>
           <el-tab-pane label="Packets">
-            <stats-chart :device="device"/>
+            <stats-chart v-if="tab === '2'" :device="device" :status="status"/>
           </el-tab-pane>
         </el-tabs>
       </el-collapse-item>
-      <el-collapse-item name="4" v-if="!device.hasOwnProperty('link')">
+      <el-collapse-item name="4" v-if="!device.hasOwnProperty('link') && status">
         <template slot="title">
           <p class="bold">Terminal</p>
         </template>
@@ -133,7 +133,7 @@
         <template slot="title">
           <p class="bold">Settings</p>
         </template>
-        <el-button type="danger" @click="open" icon="el-icon-delete">
+        <el-button type="danger" @click="open" icon="el-icon-delete" :disabled="$store.getters.getLoading || status">
           Delete
         </el-button>
       </el-collapse-item>
@@ -178,6 +178,10 @@
     props: {
       device: {
         type: Object
+      },
+      status: {
+        type: Boolean,
+        default: false
       }
     },
     components: {
@@ -194,7 +198,8 @@
         chargeLogDialog: false,
         charges: [],
         totalCharges: 100,
-        currentPage: 1
+        currentPage: 1,
+        tab: '0'
       }
     },
     created() {

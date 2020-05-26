@@ -21,6 +21,10 @@
     props: {
       device: {
         type: Object
+      },
+      status: {
+        type: Boolean,
+        default: false
       }
     },
     components: {
@@ -123,7 +127,7 @@
         this.$refs.statsChart.updateSeries(series);
 
         setInterval(() => {
-          if (this.$refs.statsChart === undefined || !this.realtime) return;
+          if (this.$refs.statsChart === undefined || !this.realtime || !this.status) return;
 
           let range = [];
           if (this.device.stats['OUTPUT:CONTROLLER'] !== undefined) {
