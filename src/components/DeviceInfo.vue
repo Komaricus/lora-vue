@@ -115,19 +115,11 @@
         <template slot="title">
           <p class="bold">Terminal</p>
         </template>
-        <div id="terminal" class="terminal-output">
-          <div v-html="output"></div>
-          <div v-if="loading" class="loading">
-            <i class="el-icon-loading"></i>
-            <br>
-            <span>Loading...</span>
-          </div>
-          <label style="color: #42b983">
-            &gt;
-            <input v-model="command" v-on:keyup.enter="runCommand" class="terminal-input"/>
-          </label>
-        </div>
 
+        <terminal style="max-width: 600px; height: 400px" :device="device"/>
+        <el-button type="default" size="medium" @click="openTerminal" style="margin-top: 10px" icon="mdi mdi-open-in-new">
+         Open in new tab
+        </el-button>
       </el-collapse-item>
       <el-collapse-item name="5" v-if="!device.hasOwnProperty('host')">
         <template slot="title">
@@ -172,6 +164,7 @@
   import BatteryChart from "./BatteryChart";
   import EventsChart from "./EventsChart";
   import StatsChart from "./StatsChart";
+  import Terminal from "../components/Terminal";
 
   export default {
     name: "device-info",
@@ -187,13 +180,11 @@
     components: {
       "battery-chart": BatteryChart,
       "events-chart": EventsChart,
-      "stats-chart": StatsChart
+      "stats-chart": StatsChart,
+      "terminal": Terminal
     },
     data() {
       return {
-        command: '',
-        loading: false,
-        output: '',
         activeNames: ['1', '2', '3', '4', '5'],
         chargeLogDialog: false,
         charges: [],
@@ -210,16 +201,14 @@
       }
     },
     watch: {
-      device() {
-        this.command = '';
-        this.loading = false;
-        this.output = '';
-      },
       activeNames() {
         localStorage.setItem('activeNames', JSON.stringify(this.activeNames));
       }
     },
     methods: {
+      openTerminal() {
+        window.open(`${window.location.origin}/terminal/${this.device.id}`)
+      },
       async loadCharges(page) {
         await axios.get(`${config.api}/events/${this.dpidToInt(this.device.id)}/charge_events`, {
             params: {
@@ -279,55 +268,6 @@
       },
       dpidToInt(dpid) {
         return Number("0x" + dpid);
-      },
-      scroll() {
-        const objDiv = document.getElementById("terminal");
-        objDiv.scrollTop = 99999999;
-      },
-      async runCommand() {
-        if (this.loading) return;
-
-        const command = this.command;
-        this.command = '';
-
-        this.output += `<span style="color: #42b983;">&gt; ${command}</span>`;
-        setTimeout(() => {
-          this.scroll();
-        }, 20);
-
-        this.loading = true;
-        const nodeName = this.device.host ? 'h' + this.dpidToInt(this.device.dpid) : 's' + this.dpidToInt(this.device.id);
-        await axios.post(`${config.api}/nodes/${nodeName}/cmd`, command, {
-            headers: {'Content-Type': 'text/plain'},
-            params: {
-              timeout: config.CMD_TIMEOUT
-            }
-          })
-          .then(response => {
-            this.output += `<br>${response.data}`;
-            this.$store.commit('notify', {
-              title: 'Command completed',
-              type: 'success',
-              position: 'bottom-right',
-              duration: config.NOTIFICATION_DURATION
-            });
-          })
-          .catch(error => {
-            console.error(error);
-            this.$store.commit('notify', {
-              title: 'Error',
-              message: 'Something went wrong',
-              type: 'error',
-              position: 'bottom-right',
-              duration: config.NOTIFICATION_DURATION
-            });
-          })
-          .finally(() => {
-            setTimeout(() => {
-              this.loading = false;
-              this.scroll();
-            }, 100)
-          });
       }
     }
   }
@@ -338,34 +278,5 @@
 
   .title {
     padding-bottom: 10px;
-  }
-
-  .terminal-output {
-    display: block;
-    max-width: 600px;
-    white-space: normal;
-    background-color: $primary;
-    color: white;
-    padding: 10px;
-    font-size: 16px;
-    height: 400px;
-    overflow-y: auto;
-  }
-
-  .terminal-input {
-    background-color: $primary;
-    color: #42b983;
-    border: none;
-    outline: 0;
-    font-size: 16px;
-    width: calc(100% - 15.11px);
-  }
-
-  .loading {
-    margin: 0 auto;
-    padding: 20px 0;
-    text-align: center;
-    background-color: $primary;
-    color: white;
   }
 </style>

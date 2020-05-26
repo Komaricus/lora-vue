@@ -21,6 +21,11 @@ const routes: Array<RouteConfig> = [
         component: () => import('../views/Topology.vue')
     },
     {
+        path: '/terminal/:dpid',
+        name: 'Terminal',
+        component: () => import('../views/Terminal.vue')
+    },
+    {
         path: '*',
         name: '404',
         component: () => import('../views/Error404.vue')

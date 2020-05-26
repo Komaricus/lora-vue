@@ -1,6 +1,6 @@
 <template>
   <div class="nav-bar">
-    <el-button type="default" icon="mdi mdi-menu" @click="toggleLeftMenu" circle size="small"/>
+    <el-button type="default" v-if="$route.name === 'Topology'" icon="mdi mdi-menu" @click="toggleLeftMenu" circle size="small"/>
 
     <a href="/"><img alt="logo" src="../assets/logo.svg" style="height: 40px; padding: 10px"></a>
     <el-button :type="emulationStatus ? 'danger' : 'success'" size="medium" v-if="$route.name === 'Topology'" :disabled="$store.getters.getLoading" style="margin-left: auto;" @click="onEmulationButtonClicked"
