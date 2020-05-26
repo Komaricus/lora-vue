@@ -8,12 +8,33 @@
         style="padding-bottom: 10px">
     </el-switch>
     <apexchart ref="batteryChart" type="line" height="350" :options="chartOptions" :series="series"></apexchart>
+
+    <el-button type="primary" @click="openChargeLogDialog">Charge Log</el-button>
+
+    <el-dialog :title="`${this.device.label} Charge Log`" :visible.sync="chargeLogDialog">
+      <el-table :data="charges">
+        <el-table-column property="id" label="Log ID"></el-table-column>
+        <el-table-column property="dpid" label="Device ID"></el-table-column>
+        <el-table-column property="charge" label="Charge"></el-table-column>
+        <el-table-column property="ts" label="Datetime"></el-table-column>
+      </el-table>
+      <el-row type="flex" justify="center" style="margin-top: 20px">
+        <el-pagination
+            background
+            layout="prev, pager, next"
+            :total="totalCharges"
+            @current-change="loadCharges"
+            :current-page.sync="currentPage">
+        </el-pagination>
+      </el-row>
+    </el-dialog>
   </div>
 </template>
 
 <script>
   import VueApexCharts from 'vue-apexcharts'
   import config from "../config";
+  import axios from "axios";
 
   export default {
     name: "BatteryChart",
@@ -32,6 +53,10 @@
     data() {
       return {
         realtime: true,
+        chargeLogDialog: false,
+        charges: [],
+        totalCharges: 100,
+        currentPage: 1,
         series: [{
           name: "Battery charge %",
           data: []
@@ -85,6 +110,45 @@
       }
     },
     methods: {
+      dpidToInt(dpid) {
+        return Number("0x" + dpid);
+      },
+      async loadCharges(page) {
+        await axios.get(`${config.api}/events/${this.dpidToInt(this.device.id)}/charge_events`, {
+            params: {
+              perpage: 10,
+              page: page - 1
+            }
+          })
+          .then(({data}) => {
+            this.charges = data;
+          })
+          .catch(error => {
+            console.error(error);
+          });
+      },
+      async openChargeLogDialog() {
+        this.currentPage = 1;
+        this.chargeLogDialog = true;
+
+        const total = axios.get(`${config.api}/events/${this.dpidToInt(this.device.id)}/charge_events/total`);
+        const events = axios.get(`${config.api}/events/${this.dpidToInt(this.device.id)}/charge_events`, {
+          params: {
+            perpage: 10,
+            page: 0
+          }
+        });
+
+        await axios.all([total, events])
+          .then(responses => {
+            this.totalCharges = responses[0].data[0].total;
+            this.charges = responses[1].data;
+          })
+          .catch(error => {
+            console.error(error);
+          });
+
+      },
       setRealtimeData() {
         if (this.$refs.batteryChart === undefined) return;
 
