@@ -55,7 +55,7 @@
               show: false
             }
           },
-          colors: ['#42b983', '#2c3e50', '#77B6EA'],
+          colors: ['#42b983', '#2c3e50', '#77B6EA', '#2E93fA', '#66DA26', '#546E7A', '#E91E63', '#FF9800'],
           dataLabels: {
             enabled: true,
           },
@@ -89,9 +89,8 @@
             min: 0,
           },
           legend: {
-            position: 'top',
-            horizontalAlign: 'right',
-            floating: true,
+            position: 'bottom',
+            horizontalAlign: 'right'
           }
         },
       }
