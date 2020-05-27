@@ -750,22 +750,31 @@
             this.hosts[hostLink.dpid].links = this.hosts[hostLink.dpid].links.filter(e => {
               return (e.id !== link.src.dpid && e.id !== link.dst.dpid)
             });
-          }
-        }
 
-        if (this.devices[link.src.dpid] !== undefined) {
-          this.devices[link.src.dpid].links = this.devices[link.src.dpid].links.filter(e => {
-            return (e.id !== link.src.dpid && e.id !== link.dst.dpid)
+            this.hosts[hostLink.dpid].port = {};
+          }
+
+          this.checkHostsReachable();
+        } else {
+          if (this.devices[link.src.dpid] !== undefined) {
+            this.devices[link.src.dpid].links = this.devices[link.src.dpid].links.filter(e => {
+              return (e.id !== link.src.dpid && e.id !== link.dst.dpid)
+            });
+          }
+          if (this.devices[link.dst.dpid] !== undefined) {
+            this.devices[link.dst.dpid].links = this.devices[link.dst.dpid].links.filter(e => {
+              return (e.id !== link.src.dpid && e.id !== link.dst.dpid)
+            });
+          }
+
+          const deleteIndex = this.links.findIndex(e => {
+            return (e.src.dpid === link.src.dpid && e.dst.dpid === link.dst.dpid) || (e.src.dpid === link.dst.dpid && e.dst.dpid === link.src.dpid)
           });
-        }
-        if (this.devices[link.dst.dpid] !== undefined) {
-          this.devices[link.dst.dpid].links = this.devices[link.dst.dpid].links.filter(e => {
-            return (e.id !== link.src.dpid && e.id !== link.dst.dpid)
-          });
+
+          this.links.splice(deleteIndex, 1);
         }
 
         this.checkDevicesReachable();
-        this.checkHostsReachable();
 
         this.$store.commit('notify', {
           title: 'Delete completed',
@@ -774,12 +783,6 @@
           position: 'bottom-right',
           duration: config.NOTIFICATION_DURATION
         });
-
-        const deleteIndex = this.links.findIndex(e => {
-          return (e.src.dpid === link.src.dpid && e.dst.dpid === link.dst.dpid) || (e.src.dpid === link.dst.dpid && e.dst.dpid === link.src.dpid)
-        });
-
-        this.links.splice(deleteIndex, 1);
 
         this.setLocalTopology();
       },
