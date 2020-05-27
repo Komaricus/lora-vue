@@ -98,7 +98,7 @@
         </template>
         <terminal :fullscreen="false" :device="device"/>
       </el-collapse-item>
-      <el-collapse-item name="5" v-if="!device.hasOwnProperty('host')">
+      <el-collapse-item name="5">
         <template slot="title">
           <p class="bold">Settings</p>
         </template>

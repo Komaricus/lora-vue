@@ -163,7 +163,7 @@
               }
 
               if (edgeData.from.includes('host') && this.hosts[edgeData.from].links.length ||
-                  edgeData.to.includes('host') && this.hosts[edgeData.to].links.length ) {
+                edgeData.to.includes('host') && this.hosts[edgeData.to].links.length) {
                 this.$store.commit('notify', {
                   title: 'Error',
                   message: 'Host can only be connected to one device!',
@@ -541,7 +541,7 @@
 
         hostData.id = 'host' + this.dpidToInt(hostData.dpid);
         hostData.label = 'Host ' + this.dpidToInt(hostData.dpid);
-        hostData.image = hostData.port.dpid  ? '/images/host.png' : '/images/host-unactive.png';
+        hostData.image = hostData.port.dpid ? '/images/host.png' : '/images/host-unactive.png';
         hostData.shape = 'image';
         hostData.physics = false;
         hostData.host = true;
@@ -689,34 +689,25 @@
       },
       deleteDevice(id) {
         const label = this.devices[id].label;
+
+        for (const link of this.devices[id].links) {
+          this.deleteLink({
+            src: {
+              dpid: id
+            },
+            dst: {
+              dpid: link.id
+            }
+          }, false);
+        }
+
         this.nodes.splice(this.nodesIndexes[id], 1);
         this.nodesIndexes = {};
         for (let i = 0; i < this.nodes.length; i++) {
           this.nodesIndexes[this.nodes[i].id] = i;
         }
 
-        this.edges = this.edges.filter(e => {
-          return e.from !== id && e.to !== id
-        });
-
-        this.links = this.links.filter(e => {
-          return e.src.dpid !== id && e.dst.dpid !== id
-        });
-
-        this.initLinkMap();
         delete this.devices[id];
-
-        for (const device in this.devices) {
-          this.devices[device].links = this.devices[device].links.filter(e => {
-            return e.id !== id
-          });
-          if (!this.devices[device].links.length) {
-            this.devices[device].physics = false;
-            this.devices[device].image = '/images/router-unactive.png';
-            this.nodes[this.nodesIndexes[device]].physics = false;
-            this.nodes[this.nodesIndexes[device]].image = '/images/router-unactive.png';
-          }
-        }
 
         this.$store.commit('notify', {
           title: 'Delete completed',
@@ -728,7 +719,7 @@
 
         this.setLocalTopology();
       },
-      deleteLink(link) {
+      deleteLink(link, showNotification) {
         if (!(this.linksMap[link.src.dpid + '_' + link.dst.dpid] || this.linksMap[link.dst.dpid + '_' + link.src.dpid]))
           return;
 
@@ -776,6 +767,39 @@
 
         this.checkDevicesReachable();
 
+        if (showNotification) {
+          this.$store.commit('notify', {
+            title: 'Delete completed',
+            message: `${label} deleted`,
+            type: 'success',
+            position: 'bottom-right',
+            duration: config.NOTIFICATION_DURATION
+          });
+        }
+
+        this.setLocalTopology();
+      },
+      deleteHost(id) {
+        const label = this.hosts[id].label;
+
+        for (const link of this.hosts[id].links) {
+          this.deleteLink({
+            src: {
+              dpid: id
+            },
+            dst: {
+              dpid: link.id
+            }
+          }, false);
+        }
+
+        this.nodes.splice(this.nodesIndexes[id], 1);
+        this.nodesIndexes = {};
+        for (let i = 0; i < this.nodes.length; i++) {
+          this.nodesIndexes[this.nodes[i].id] = i;
+        }
+        delete this.hosts[id];
+
         this.$store.commit('notify', {
           title: 'Delete completed',
           message: `${label} deleted`,
@@ -788,7 +812,17 @@
       },
       async onDeleteButtonClicked() {
         this.$store.commit("setLoading", true);
-        if (this.selected.link) {
+        if (this.selected.host) {
+          await axios.delete(`${config.api}/host/${this.getNodeNameByDpid(this.selected.id)}`)
+            .then(() => {
+              this.deleteHost(this.selected.id);
+            })
+            .catch(error => {
+              console.error(error);
+            }).finally(() => {
+              this.$store.commit("setLoading", false);
+            });
+        } else if (this.selected.link) {
           await axios.delete(`${config.api}/link`, {
               data: {
                 a: this.getNodeNameByDpid(this.selected.to),
@@ -803,7 +837,7 @@
                 dst: {
                   dpid: this.selected.to
                 }
-              });
+              }, true);
             })
             .catch(error => {
               console.error(error);
