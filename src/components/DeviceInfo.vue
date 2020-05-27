@@ -10,9 +10,9 @@
         <template slot="title">
           <p class="bold">Info</p>
         </template>
-        <p><span class="bold">MAC:</span> {{ device.mac }}</p>
-        <p><span class="bold">IPv4:</span> {{ device.ipv4.join(', ') }}</p>
-        <p><span class="bold">IPv6:</span> {{ device.ipv6.join(', ') }}</p>
+        <p v-if="device.mac"><span class="bold">MAC:</span> {{ device.mac }}</p>
+        <p v-if="device.ipv4"><span class="bold">IPv4:</span> {{ device.ipv4.join(', ') }}</p>
+        <p v-if="device.ipv6"><span class="bold">IPv6:</span> {{ device.ipv6.join(', ') }}</p>
       </el-collapse-item>
       <el-collapse-item name="1" v-if="!device.hasOwnProperty('host')">
         <template slot="title">
@@ -39,7 +39,7 @@
         </el-table>
         <p v-else>No ports specified</p>
       </el-collapse-item>
-      <el-collapse-item name="2" >
+      <el-collapse-item name="2">
         <template slot="title">
           <p class="bold">Links</p>
         </template>

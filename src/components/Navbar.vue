@@ -13,6 +13,9 @@
     <el-button type="primary" size="medium" v-if="$route.name === 'Topology'" :disabled="emulationStatus || $store.getters.getLoading" style="margin-left: 10px" @click="$emit('add-node-clicked')" icon="mdi mdi-plus">
       Add Device
     </el-button>
+    <el-button type="primary" size="medium" v-if="$route.name === 'Topology'" :disabled="emulationStatus || $store.getters.getLoading" style="margin-left: 10px" @click="$emit('add-host-clicked')" icon="mdi mdi-plus">
+      Add Host
+    </el-button>
   </div>
 </template>
 

@@ -2,6 +2,7 @@
   <div>
     <Navbar @add-node-clicked="onAddNodeButtonClicked"
             @add-link-clicked="onAddLinkButtonClicked"
+            @add-host-clicked="onAddHostButtonClicked"
             @emulation-status-changed="onEmulationStatusChanged"
             :status="status"/>
     <div class="wrapper">
@@ -75,28 +76,50 @@
             enabled: false,
             addNode: (nodeData, callback) => {
               this.$store.commit("setLoading", true);
-              this.addNodeMode = false;
-              this.$message.closeAll();
-              nodeData.id = this.generateNewID();
 
-              axios.post(`${config.api}/switch/s${this.dpidToInt(nodeData.id)}`, {
-                  params: {
-                    delay: "100ms",
-                    bw: 50
-                  }
-                })
-                .then(() => {
-                  this.addDevice({id: nodeData.id});
-                  this.$refs.network.disableEditMode();
-                  this.setLocalTopology();
-                  callback(nodeData);
-                })
-                .catch(error => {
-                  console.error(error)
-                })
-                .finally(() => {
-                  this.$store.commit("setLoading", false);
-                });
+              if (this.addHostMode) {
+                this.addHostMode = false;
+
+                nodeData.dpid = this.generateNewHostID();
+
+                axios.post(`${config.api}/host/h${this.dpidToInt(nodeData.dpid)}`,)
+                  .then(() => {
+                    this.addHost({dpid: nodeData.dpid, port: {}, mac: 'Not specified yet'});
+                    this.$refs.network.disableEditMode();
+                    this.setLocalTopology();
+                    callback(nodeData);
+                  })
+                  .catch(error => {
+                    console.error(error)
+                  })
+                  .finally(() => {
+                    this.$store.commit("setLoading", false);
+                  });
+              } else {
+                this.addNodeMode = false;
+                nodeData.id = this.generateNewID();
+
+                axios.post(`${config.api}/switch/s${this.dpidToInt(nodeData.id)}`, {
+                    params: {
+                      delay: "100ms",
+                      bw: 50
+                    }
+                  })
+                  .then(() => {
+                    this.addDevice({id: nodeData.id});
+                    this.$refs.network.disableEditMode();
+                    this.setLocalTopology();
+                    callback(nodeData);
+                  })
+                  .catch(error => {
+                    console.error(error)
+                  })
+                  .finally(() => {
+                    this.$store.commit("setLoading", false);
+                  });
+              }
+
+              this.$message.closeAll();
             },
             addEdge: (edgeData, callback) => {
               this.addEdgeMode = false;
@@ -136,14 +159,19 @@
                   this.addLink({
                     src: {
                       dpid: edgeData.from,
-                      name: this.generateInterfaceName(edgeData.from)
+                      name: this.generateInterfaceName(edgeData.from),
+                      'hw_addr': 'Not specified yet',
+                      'port_no': this.generatePortNumber(edgeData.from)
                     },
                     dst: {
                       dpid: edgeData.to,
-                      name: this.generateInterfaceName(edgeData.from)
+                      name: this.generateInterfaceName(edgeData.to),
+                      'hw_addr': 'Not specified yet',
+                      'port_no': this.generatePortNumber(edgeData.to)
                     }
                   }, true);
                   this.checkDevicesReachable();
+                  this.checkHostsReachable();
                   this.$refs.network.disableEditMode();
                   this.setLocalTopology();
                   callback(edgeData);
@@ -165,6 +193,7 @@
         },
         addNodeMode: false,
         addEdgeMode: false,
+        addHostMode: false,
         linksMap: {},
         nodesIndexes: {},
         nextId: 0x0000000000000000,
@@ -475,53 +504,46 @@
         }
       },
       addHost(hostData) {
-        hostData.dpid = this.generateNewHostID();
+        if (hostData.ipv4) {
+          const dpid = +hostData.ipv4[0].split('.')[3];
+          hostData.dpid = this.generateNewHostID(dpid);
+        } else if (hostData.dpid) {
+          hostData.ipv4 = [`10.0.0.${this.dpidToInt(hostData.dpid)}`];
+        }
+
+        if (this.nextHostId < parseInt('0x' + hostData.dpid, 16))
+          this.nextHostId = parseInt('0x' + hostData.dpid, 16);
+
         hostData.id = 'host' + this.dpidToInt(hostData.dpid);
         hostData.label = 'Host ' + this.dpidToInt(hostData.dpid);
-        hostData.image = '/images/host.png';
+        hostData.image = hostData.port.dpid  ? '/images/host.png' : '/images/host-unactive.png';
         hostData.shape = 'image';
         hostData.physics = false;
         hostData.host = true;
         hostData.links = [];
-
-        if (hostData.port.dpid !== undefined) {
-          hostData.links.push({
-            id: hostData.port.dpid,
-            label: this.devices[hostData.port.dpid].label,
-            srcPort: `h${this.dpidToInt(hostData.dpid)}-eth${hostData.links.length}`,
-            dstPort: hostData.port.name,
-          });
-
-          this.edges.push({
-            label: `h${this.dpidToInt(hostData.dpid)}-eth${hostData.links.length}_${hostData.port.name}`,
-            from: hostData.id,
-            to: hostData.port.dpid,
-            length: config.TOPOLOGY_EDGES_LENGTH,
-            arrows: {
-              to: {
-                enabled: true,
-                type: 'triangle'
-              },
-              from: {
-                enabled: true,
-                type: 'triangle'
-              }
-            }
-          });
-
-          this.linksMap[hostData.id + '_' + hostData.port.dpid] = true;
-
-          this.devices[hostData.port.dpid].links.push({
-            id: hostData.id,
-            label: hostData.label,
-            srcPort: hostData.port.name,
-            dstPort: `h${this.dpidToInt(hostData.dpid)}-eth${hostData.links.length}`,
-          });
-        }
+        hostData.x = this.position.x;
+        hostData.y = this.position.y;
 
         this.nodes.push(hostData);
         this.nodesIndexes[hostData.id] = this.nodes.length - 1;
         this.hosts[hostData.id] = Object.assign({}, hostData);
+
+        if (hostData.port.dpid !== undefined) {
+          this.addLink({
+            src: {
+              dpid: hostData.id,
+              name: `h${this.dpidToInt(hostData.dpid)}-eth${hostData.links.length + 1}`,
+              'hw_addr': hostData.mac,
+              'port_no': '00000001'
+            },
+            dst: hostData.port
+          }, false);
+        }
+
+        setTimeout(() => {
+          this.nodes[this.nodesIndexes[hostData.id]].x = undefined;
+          this.nodes[this.nodesIndexes[hostData.id]].y = undefined;
+        }, 50);
       },
       addDevice(nodeData) {
         nodeData.label = 'Device ' + this.dpidToInt(nodeData.id);
@@ -567,7 +589,6 @@
       },
       addLink(link, showNotification) {
         if (!(this.linksMap[link.src.dpid + '_' + link.dst.dpid] || this.linksMap[link.dst.dpid + '_' + link.src.dpid])) {
-          this.links.push(link);
           this.linksMap[link.src.dpid + '_' + link.dst.dpid] = true;
           this.edges.push({
             label: `${link.src.name}_${link.dst.name}`,
@@ -586,26 +607,49 @@
             }
           });
 
-          this.devices[link.src.dpid].links.push({
-            id: this.devices[link.dst.dpid].id,
-            label: this.devices[link.dst.dpid].label,
-            srcPort: link.src.name,
-            dstPort: link.dst.name,
-          });
+          if (link.src.dpid.includes('host') || link.dst.dpid.includes('host')) {
+            let hostLink = link.src.dpid.includes('host') ? link.src : link.dst;
+            let deviceLink = link.src.dpid.includes('host') ? link.dst : link.src;
 
-          if (this.devices[link.src.dpid].ports.findIndex(e => e.name === link.src.name) === -1) {
-            this.devices[link.src.dpid].ports.push(link.src);
-          }
+            this.devices[deviceLink.dpid].links.push({
+              id: this.hosts[hostLink.dpid].id,
+              label: this.hosts[hostLink.dpid].label,
+              srcPort: deviceLink.name,
+              dstPort: hostLink.name,
+            });
 
-          this.devices[link.dst.dpid].links.push({
-            id: this.devices[link.src.dpid].id,
-            label: this.devices[link.src.dpid].label,
-            srcPort: link.dst.name,
-            dstPort: link.src.name,
-          });
+            this.hosts[hostLink.dpid].links.push({
+              id: this.devices[deviceLink.dpid].id,
+              label: this.devices[deviceLink.dpid].label,
+              srcPort: hostLink.name,
+              dstPort: deviceLink.name,
+            });
 
-          if (this.devices[link.dst.dpid].ports.findIndex(e => e.name === link.dst.name) === -1) {
-            this.devices[link.dst.dpid].ports.push(link.dst);
+            this.hosts[hostLink.dpid].port = deviceLink;
+          } else {
+            this.links.push(link);
+
+            this.devices[link.src.dpid].links.push({
+              id: this.devices[link.dst.dpid].id,
+              label: this.devices[link.dst.dpid].label,
+              srcPort: link.src.name,
+              dstPort: link.dst.name,
+            });
+
+            if (this.devices[link.src.dpid].ports.findIndex(e => e.name === link.src.name) === -1) {
+              this.devices[link.src.dpid].ports.push(link.src);
+            }
+
+            this.devices[link.dst.dpid].links.push({
+              id: this.devices[link.src.dpid].id,
+              label: this.devices[link.src.dpid].label,
+              srcPort: link.dst.name,
+              dstPort: link.src.name,
+            });
+
+            if (this.devices[link.dst.dpid].ports.findIndex(e => e.name === link.dst.name) === -1) {
+              this.devices[link.dst.dpid].ports.push(link.dst);
+            }
           }
 
           if (showNotification)
@@ -674,6 +718,16 @@
 
         this.initLinkMap();
 
+        if (link.src.dpid.includes('host') || link.dst.dpid.includes('host')) {
+          let hostLink = link.src.dpid.includes('host') ? link.src : link.dst;
+
+          if (this.hosts[hostLink.dpid] !== undefined) {
+            this.hosts[hostLink.dpid].links = this.hosts[hostLink.dpid].links.filter(e => {
+              return (e.id !== link.src.dpid && e.id !== link.dst.dpid)
+            });
+          }
+        }
+
         if (this.devices[link.src.dpid] !== undefined) {
           this.devices[link.src.dpid].links = this.devices[link.src.dpid].links.filter(e => {
             return (e.id !== link.src.dpid && e.id !== link.dst.dpid)
@@ -686,6 +740,7 @@
         }
 
         this.checkDevicesReachable();
+        this.checkHostsReachable();
 
         this.$store.commit('notify', {
           title: 'Delete completed',
@@ -696,9 +751,11 @@
         });
 
         const deleteIndex = this.links.findIndex(e => {
-          return (e.from === link.src.dpid && e.to === link.dst.dpid) || (e.from === link.dst.dpid && e.to === link.src.dpid)
+          return (e.src.dpid === link.src.dpid && e.dst.dpid === link.dst.dpid) || (e.src.dpid === link.dst.dpid && e.dst.dpid === link.src.dpid)
         });
+
         this.links.splice(deleteIndex, 1);
+
         this.setLocalTopology();
       },
       async onDeleteButtonClicked() {
@@ -841,6 +898,28 @@
           }
         });
       },
+      onAddHostButtonClicked() {
+        setTimeout(() => {
+          this.$refs.network.addNodeMode();
+        }, 100);
+
+        this.addEdgeMode = false;
+        this.addNodeMode = true;
+        this.addHostMode = true;
+        this.$message.closeAll();
+        this.$message({
+          showClose: true,
+          message: 'Click anywhere to add host.',
+          type: 'Info',
+          offset: 7.5,
+          duration: 0,
+          onClose: () => {
+            this.addNodeMode = false;
+            this.addHostMode = false;
+            this.$refs.network.disableEditMode();
+          }
+        });
+      },
       onClick($event) {
         this.position.x = $event.pointer.canvas.x;
         this.position.y = $event.pointer.canvas.y;
@@ -852,15 +931,35 @@
 
         return id;
       },
-      generateNewHostID() {
-        this.nextHostId++;
-        let id = this.nextHostId.toString(16);
+      generateNewHostID(dpid) {
+        if (dpid === undefined) {
+          this.nextHostId++;
+        }
+
+        let id = dpid !== undefined ? dpid.toString(16) : this.nextHostId.toString(16);
         id = "0".repeat(16 - id.length) + id;
 
         return id;
       },
       generateInterfaceName(dpid) {
-        return `${this.getNodeNameByDpid(dpid)}-eth${this.devices[dpid].links.length + 1}`
+        const length = dpid.includes('host') ? this.hosts[dpid].links.length : this.devices[dpid].links.length;
+
+        return `${this.getNodeNameByDpid(dpid)}-eth${length + 1}`
+      },
+      generatePortNumber(dpid) {
+        if (!this.devices[dpid]) return '';
+        let newPortNumber = 0;
+        for (const port of this.devices[dpid].ports) {
+          if (parseInt(port['port_no']) > newPortNumber) {
+            newPortNumber = parseInt(port['port_no']);
+          }
+        }
+
+        newPortNumber++;
+        newPortNumber = newPortNumber.toString();
+        newPortNumber = "0".repeat(8 - newPortNumber.length) + newPortNumber;
+
+        return newPortNumber;
       },
       onDragStart($event) {
         if ($event.nodes.length)
@@ -884,6 +983,7 @@
         let hosts = [];
         for (const hostName in this.hosts) {
           hosts.push({
+            dpid: this.hosts[hostName].dpid,
             ipv4: this.hosts[hostName].ipv4,
             ipv6: this.hosts[hostName].ipv6,
             mac: this.hosts[hostName].mac,
