@@ -324,7 +324,7 @@
         if (status) {
           await axios.get(`${config.api}/net/start`)
             .then(() => {
-              console.log('Starting emulation...');
+              console.info('Starting emulation...');
               this.status = status;
               this.connect();
             })
@@ -337,7 +337,7 @@
         } else {
           await axios.get(`${config.api}/net/stop`)
             .then(() => {
-              console.log('Stopping emulation...');
+              console.info('Stopping emulation...');
               this.status = status;
             })
             .catch(error => {
@@ -480,7 +480,7 @@
       connect() {
         this.socket = new WebSocket("ws://localhost:5555/v1.0/topology/ws");
         this.socket.onopen = () => {
-          console.log("connected to ws://localhost:5555/v1.0/topology/ws");
+          console.info("connected to ws://localhost:5555/v1.0/topology/ws");
           this.$store.commit('notify', {
             title: 'Connected to server',
             type: 'info',
@@ -491,7 +491,7 @@
 
         this.socket.onmessage = ({data}) => {
           const parsedData = JSON.parse(data);
-          console.log(parsedData);
+          console.info(parsedData);
           // switch (parsedData.method) {
           //   case 'event_switch_enter':
           //     this.addDevice({id: parsedData.params[0].dpid});
@@ -513,7 +513,7 @@
         };
 
         this.socket.onclose = (event) => {
-          console.log(event)
+          console.info(event)
         };
 
         this.socket.onerror = (error) => {
@@ -903,6 +903,22 @@
           }
         }
 
+        for (const host in this.hosts) {
+          if (this.hosts[host].id === link.from
+            || this.hosts[host].id === link.to) {
+            link.links.push(this.hosts[host]);
+            const temp = this.devices[this.hosts[host].port.dpid].links.find(e => e.id === link.from || e.id === link.to);
+            if (temp !== undefined) {
+              link.ports.push({
+                dpid: this.hosts[host].id,
+                'hw_addr': this.hosts[host].mac,
+                name: temp.dstPort,
+                'port_no': "00000001"
+              });
+            }
+          }
+        }
+
         this.selected = link;
 
         this.$store.commit('setLeftMenu', true);
@@ -1063,10 +1079,8 @@
           });
         }
 
-        // console.log('switches: ', switches);
         localStorage.setItem('switches', JSON.stringify(switches));
 
-        // console.log(this.links);
         localStorage.setItem('links', JSON.stringify(this.links));
 
         let hosts = [];
@@ -1080,7 +1094,6 @@
           });
         }
 
-        // console.log(hosts);
         localStorage.setItem('hosts', JSON.stringify(hosts));
 
       },
