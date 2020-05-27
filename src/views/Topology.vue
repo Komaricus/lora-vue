@@ -150,6 +150,31 @@
                 return;
               }
 
+              if (edgeData.from.includes('host') && edgeData.to.includes('host')) {
+                this.$store.commit('notify', {
+                  title: 'Error',
+                  message: 'Hosts cannot be connected directly!',
+                  type: 'error',
+                  position: 'bottom-right',
+                  duration: config.NOTIFICATION_DURATION
+                });
+                this.$refs.network.disableEditMode();
+                return;
+              }
+
+              if (edgeData.from.includes('host') && this.hosts[edgeData.from].links.length ||
+                  edgeData.to.includes('host') && this.hosts[edgeData.to].links.length ) {
+                this.$store.commit('notify', {
+                  title: 'Error',
+                  message: 'Host can only be connected to one device!',
+                  type: 'error',
+                  position: 'bottom-right',
+                  duration: config.NOTIFICATION_DURATION
+                });
+                this.$refs.network.disableEditMode();
+                return;
+              }
+
               this.$store.commit("setLoading", true);
               axios.post(`${config.api}/link`, {
                   a: this.getNodeNameByDpid(edgeData.from),
