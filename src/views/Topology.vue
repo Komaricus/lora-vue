@@ -422,7 +422,13 @@
               for (const device of data) {
                 if (!this.devices[device.dpid]) continue;
                 let charge = (device.charge / config.CHARGE_DIVIDER).toFixed(0);
-                if (charge < 0) charge = 0;
+                if (charge <= 0) {
+                  charge = 0;
+                  if (this.devices[device.dpid].image !== '/images/router-uncharged.png') {
+                    this.devices[device.dpid].image = '/images/router-uncharged.png';
+                    this.nodes[this.nodesIndexes[device.dpid]].image = '/images/router-uncharged.png';
+                  }
+                }
                 const tick = {y: charge, x: new Date().toLocaleTimeString()};
                 this.devices[device.dpid].charges.data.push(tick);
                 this.devices[device.dpid].charges.range.push(tick.x);
