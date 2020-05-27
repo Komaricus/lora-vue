@@ -651,6 +651,9 @@
             });
 
             this.hosts[hostLink.dpid].port = deviceLink;
+            if (this.devices[deviceLink.dpid].ports.findIndex(e => e.name === deviceLink.name) === -1) {
+              this.devices[deviceLink.dpid].ports.push(deviceLink);
+            }
           } else {
             this.links.push(link);
 
@@ -743,7 +746,7 @@
               return (e.id !== link.src.dpid && e.id !== link.dst.dpid)
             });
 
-            const portIndex = this.devices[deviceLink.dpid].ports.findIndex(e => e.hw_addr === this.hosts[hostLink.dpid].port.hw_addr);
+            const portIndex = this.devices[deviceLink.dpid].ports.findIndex(e => e.name === this.hosts[hostLink.dpid].port.name);
             this.devices[deviceLink.dpid].ports.splice(portIndex, 1);
           }
 
@@ -767,7 +770,7 @@
               return (e.id !== link.src.dpid && e.id !== link.dst.dpid)
             });
 
-            this.devices[link.src.dpid].ports.splice(this.devices[link.src.dpid].ports.findIndex(e => e.hw_addr === linkPorts.src.hw_addr || e.hw_addr === linkPorts.dst.hw_addr), 1);
+            this.devices[link.src.dpid].ports.splice(this.devices[link.src.dpid].ports.findIndex(e => e.name === linkPorts.src.name || e.name === linkPorts.dst.name), 1);
           }
 
           if (this.devices[link.dst.dpid] !== undefined) {
@@ -775,7 +778,7 @@
               return (e.id !== link.src.dpid && e.id !== link.dst.dpid)
             });
 
-            this.devices[link.dst.dpid].ports.splice(this.devices[link.dst.dpid].ports.findIndex(e => e.hw_addr === linkPorts.src.hw_addr || e.hw_addr === linkPorts.dst.hw_addr), 1);
+            this.devices[link.dst.dpid].ports.splice(this.devices[link.dst.dpid].ports.findIndex(e => e.name === linkPorts.src.name || e.hw_addr === linkPorts.dst.name), 1);
           }
 
           this.links.splice(deleteIndex, 1);
@@ -1020,9 +1023,17 @@
         return id;
       },
       generateInterfaceName(dpid) {
-        const length = dpid.includes('host') ? this.hosts[dpid].links.length : this.devices[dpid].links.length;
+        let newInterfaceNumber = 0;
+        if (!dpid.includes('host')) {
+          for (const port of this.devices[dpid].ports) {
+            const value = parseInt(port['name'].split('-')[1].replace('eth', ''));
+            if (value > newInterfaceNumber) {
+              newInterfaceNumber = value;
+            }
+          }
+        }
 
-        return `${this.getNodeNameByDpid(dpid)}-eth${length + 1}`
+        return `${this.getNodeNameByDpid(dpid)}-eth${newInterfaceNumber + 1}`
       },
       generatePortNumber(dpid) {
         if (!this.devices[dpid]) return '';
