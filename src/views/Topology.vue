@@ -7,7 +7,10 @@
             :status="status"/>
     <div class="wrapper">
       <div class="left-menu" :class="{'active' : showLeftMenu }">
-        <device-info :device="selected" @device-selected="onDeviceSelected" @delete-clicked="onDeleteButtonClicked"
+        <device-info :device="selected"
+                     @device-selected="onDeviceSelected"
+                     @delete-clicked="onDeleteButtonClicked"
+                     @charge-divider-updated="onChargeDividerUpdated"
                      :status="status"/>
       </div>
       <Network ref="network"
@@ -224,7 +227,8 @@
         nextId: 0x0000000000000000,
         nextHostId: 0x0000000000000000,
         hosts: {},
-        links: []
+        links: [],
+        chargeDivider: 10000
       }
     },
     async created() {
@@ -233,26 +237,26 @@
         .then(async ({data}) => {
           this.status = data.status;
           if (data.status) {
-            const switches = axios.get(`${config.back}/v1.0/topology/switches`);
-            const links = axios.get(`${config.back}/v1.0/topology/links`);
-            const hosts = axios.get(`${config.back}/v1.0/topology/hosts`);
-
-            await axios.all([switches, links, hosts])
-              .then(responses => {
-                this.initTopology(responses[0].data, responses[1].data, responses[2].data);
-                this.setLocalTopology();
-              })
-              .catch(error => {
-                console.error(error);
-                //Adds mocks
-                // this.nodes = mocks.nodes;
-                // this.edges = mocks.edges;
-                // this.devices = mocks.devices;
-                // this.linksMap = mocks.linksMap;
-                // this.nodesIndexes = mocks.nodesIndexes;
-              });
-
-            this.connect();
+            // const switches = axios.get(`${config.back}/v1.0/topology/switches`);
+            // const links = axios.get(`${config.back}/v1.0/topology/links`);
+            // const hosts = axios.get(`${config.back}/v1.0/topology/hosts`);
+            //
+            // await axios.all([switches, links, hosts])
+            //   .then(responses => {
+            //     this.initTopology(responses[0].data, responses[1].data, responses[2].data);
+            //     this.setLocalTopology();
+            //   })
+            //   .catch(error => {
+            //     console.error(error);
+            //     //Adds mocks
+            //     // this.nodes = mocks.nodes;
+            //     // this.edges = mocks.edges;
+            //     // this.devices = mocks.devices;
+            //     // this.linksMap = mocks.linksMap;
+            //     // this.nodesIndexes = mocks.nodesIndexes;
+            //   });
+            //
+            // this.connect();
           } else {
             let switches, links, hosts;
             ({switches, links, hosts} = this.getLocalTopology());
@@ -421,7 +425,7 @@
             .then(({data}) => {
               for (const device of data) {
                 if (!this.devices[device.dpid]) continue;
-                let charge = (device.charge / config.CHARGE_DIVIDER).toFixed(0);
+                let charge = (device.charge / this.chargeDivider * 100).toFixed(0);
                 if (charge <= 0) {
                   charge = 0;
                   if (this.devices[device.dpid].image !== '/images/router-uncharged.png') {
@@ -1109,6 +1113,9 @@
           links: localStorage.getItem('links') ? JSON.parse(localStorage.getItem('links')) : [],
           hosts: localStorage.getItem('hosts') ? JSON.parse(localStorage.getItem('hosts')) : []
         }
+      },
+      onChargeDividerUpdated(charge) {
+        this.chargeDivider = charge;
       }
     },
     computed: {

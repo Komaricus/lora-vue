@@ -82,7 +82,7 @@
         </template>
         <el-tabs type="border-card" stretch v-model="tab">
           <el-tab-pane label="Battery">
-            <battery-chart v-if="tab === '0'" :device="device" :status="status"/>
+            <battery-chart v-if="tab === '0'" :device="device" :status="status" :divider="this.charge"/>
           </el-tab-pane>
           <el-tab-pane label="Events">
             <events-chart v-if="tab === '1'" :device="device" :status="status"/>
@@ -132,6 +132,12 @@
           label="Device ID">
       </el-table-column>
     </el-table>
+    <h2 style="margin-top: 30px">Devices Initial Battery Capacity</h2>
+    <div style="margin-top: 15px">
+      <el-input-number v-model="charge" :min="0" :step="100"/>
+      <span style="margin-left: 8px">mA</span>
+      <el-button :disabled="status" type="default" style="margin-left: 15px" @click="setCharge">Set</el-button>
+    </div>
   </div>
 </template>
 
@@ -163,15 +169,24 @@
     data() {
       return {
         activeNames: ['1', '2', '3', '4', '5'],
-        tab: '0'
+        tab: '0',
+        charge: 10000
       }
     },
-    created() {
+    async created() {
       if (!localStorage.getItem('activeNames')) {
         localStorage.setItem('activeNames', JSON.stringify(this.activeNames));
       } else {
         this.activeNames = JSON.parse(localStorage.getItem('activeNames'));
       }
+
+      await axios.get(`${config.api}/initial_charge`)
+      .then(({data}) => {
+        this.charge = data.charge;
+      })
+      .catch(error => {
+        console.error(error)
+      });
     },
     watch: {
       activeNames() {
@@ -179,6 +194,23 @@
       }
     },
     methods: {
+      async setCharge() {
+        await axios.put(`${config.api}/initial_charge`, {
+          charge: this.charge
+        })
+        .then(() => {
+          this.$store.commit('notify', {
+            title: 'Devices Initial Battery Capacity updated!',
+            type: 'success',
+            position: 'bottom-right',
+            duration: config.NOTIFICATION_DURATION
+          });
+          this.$emit('charge-divider-updated', this.charge)
+        })
+          .catch(error => {
+            console.error(error)
+          });
+      },
       open() {
         const isDevice = this.device.link === undefined;
         this.$confirm(`Are you sure you want to delete ${isDevice ? this.device.label : 'Link ' + this.device.label}?`,
