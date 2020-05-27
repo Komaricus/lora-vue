@@ -736,6 +736,16 @@
 
         if (link.src.dpid.includes('host') || link.dst.dpid.includes('host')) {
           let hostLink = link.src.dpid.includes('host') ? link.src : link.dst;
+          let deviceLink = link.src.dpid.includes('host') ? link.dst : link.src;
+
+          if (this.devices[deviceLink.dpid] !== undefined) {
+            this.devices[deviceLink.dpid].links = this.devices[deviceLink.dpid].links.filter(e => {
+              return (e.id !== link.src.dpid && e.id !== link.dst.dpid)
+            });
+
+            const portIndex = this.devices[deviceLink.dpid].ports.findIndex(e => e.hw_addr === this.hosts[hostLink.dpid].port.hw_addr);
+            this.devices[deviceLink.dpid].ports.splice(portIndex, 1);
+          }
 
           if (this.hosts[hostLink.dpid] !== undefined) {
             this.hosts[hostLink.dpid].links = this.hosts[hostLink.dpid].links.filter(e => {
@@ -747,20 +757,26 @@
 
           this.checkHostsReachable();
         } else {
+          const deleteIndex = this.links.findIndex(e => {
+            return (e.src.dpid === link.src.dpid && e.dst.dpid === link.dst.dpid) || (e.src.dpid === link.dst.dpid && e.dst.dpid === link.src.dpid)
+          });
+          const linkPorts = this.links[deleteIndex];
+
           if (this.devices[link.src.dpid] !== undefined) {
             this.devices[link.src.dpid].links = this.devices[link.src.dpid].links.filter(e => {
               return (e.id !== link.src.dpid && e.id !== link.dst.dpid)
             });
+
+            this.devices[link.src.dpid].ports.splice(this.devices[link.src.dpid].ports.findIndex(e => e.hw_addr === linkPorts.src.hw_addr || e.hw_addr === linkPorts.dst.hw_addr), 1);
           }
+
           if (this.devices[link.dst.dpid] !== undefined) {
             this.devices[link.dst.dpid].links = this.devices[link.dst.dpid].links.filter(e => {
               return (e.id !== link.src.dpid && e.id !== link.dst.dpid)
             });
-          }
 
-          const deleteIndex = this.links.findIndex(e => {
-            return (e.src.dpid === link.src.dpid && e.dst.dpid === link.dst.dpid) || (e.src.dpid === link.dst.dpid && e.dst.dpid === link.src.dpid)
-          });
+            this.devices[link.dst.dpid].ports.splice(this.devices[link.dst.dpid].ports.findIndex(e => e.hw_addr === linkPorts.src.hw_addr || e.hw_addr === linkPorts.dst.hw_addr), 1);
+          }
 
           this.links.splice(deleteIndex, 1);
         }
