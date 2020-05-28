@@ -117,15 +117,15 @@
               </template>
             </el-table-column>
             <el-table-column
-                label="Dest. MAC">
-              <template slot-scope="scope">
-                <span>{{ scope.row.match.dl_dst ? scope.row.match.dl_dst : '-' }}</span>
-              </template>
-            </el-table-column>
-            <el-table-column
                 label="Src. MAC">
               <template slot-scope="scope">
                 <span>{{ scope.row.match.dl_src ? scope.row.match.dl_src : '-' }}</span>
+              </template>
+            </el-table-column>
+            <el-table-column
+                label="Dest. MAC">
+              <template slot-scope="scope">
+                <span>{{ scope.row.match.dl_dst ? scope.row.match.dl_dst : '-' }}</span>
               </template>
             </el-table-column>
             <el-table-column

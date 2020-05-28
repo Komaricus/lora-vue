@@ -388,14 +388,17 @@
           for (const dpid in this.devices) {
             axios.get(`${config.back}/stats/flow/${this.dpidToInt(dpid)}`)
               .then(({data}) => {
-                this.devices[dpid].flow = data[this.dpidToInt(dpid)].sort((a, b) => {
+                this.devices[dpid].flow = data[this.dpidToInt(dpid)];
+                this.devices[dpid].flow.sort((a, b) => {
                   if (a.actions[0] > b.actions[0]) return 1;
                   else return -1;
                 });
                 for (const action of data[this.dpidToInt(dpid)]) {
                   if (action.actions[0] !== 'OUTPUT:CONTROLLER') {
-                    if (this.hostsMacs[action.match.dl_src]) {
-                      action.actions[0] = `${action.actions[0]} (${this.hosts[this.hostsMacs[action.match.dl_src]].label})`;
+                    const hostFrom = this.hosts[this.hostsMacs[action.match.dl_src]].label;
+                    const hostTo = this.hosts[this.hostsMacs[action.match.dl_dst]].label;
+                    if (hostTo && hostFrom) {
+                      action.actions[0] = `${hostFrom} -> ${hostTo}`;
                     }
                   }
 
