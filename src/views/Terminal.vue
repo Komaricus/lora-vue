@@ -2,7 +2,7 @@
   <div>
     <Navbar/>
     <div class="wrapper">
-      <h2 style="padding-bottom: 20px;">{{getTitle()}} terminal</h2>
+      <h2 style="padding-bottom: 10px;">{{getTitle()}} terminal</h2>
       <terminal fullscreen :device="{id: this.$route.params.dpid, host: this.$route.params.dpid.includes('h')}"/>
     </div>
   </div>

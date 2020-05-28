@@ -1,6 +1,10 @@
 <template>
   <div>
-    <div id="terminal" class="terminal-output" :style="fullscreen ? {height: '835px'} : styleObject">
+    <div v-if="fullscreen" style="margin: 10px 0">
+      <span>Timeout</span>
+      <el-input-number size="small" v-model="timeout" :min="1" :step="1" style="margin-left: 10px"/>
+    </div>
+    <div id="terminal" class="terminal-output" :style="fullscreen ? {height: '760px'} : styleObject">
       <div v-html="output"></div>
       <div v-if="loading" class="loading">
         <i class="el-icon-loading"></i>
@@ -12,10 +16,13 @@
         <input v-model="command" v-on:keyup.enter="runCommand" class="terminal-input"/>
       </label>
     </div>
-    <el-button v-if="!fullscreen" type="default" size="medium" @click="openTerminal" style="margin-top: 10px"
-               icon="mdi mdi-open-in-new">
-      Open in new tab
-    </el-button>
+    <div v-if="!fullscreen" style="display: flex; align-items: center; margin-top: 10px">
+      <el-button type="default" size="medium" @click="openTerminal" icon="mdi mdi-open-in-new">
+        Open in new tab
+      </el-button>
+      <span style="margin-left: auto">Timeout</span>
+      <el-input-number size="mini" v-model="timeout" :min="1" :step="1" style="margin-left: 10px"/>
+    </div>
   </div>
 </template>
 
@@ -42,7 +49,8 @@
         styleObject: {
           maxWidth: '600px',
           height: '400px'
-        }
+        },
+        timeout: 5
       }
     },
     created() {
@@ -88,7 +96,7 @@
         await axios.post(`${config.api}/nodes/${this.getNodeNameByDpid(this.device.id)}/cmd`, command, {
             headers: {'Content-Type': 'text/plain'},
             params: {
-              timeout: config.CMD_TIMEOUT
+              timeout: this.timeout
             }
           })
           .then(response => {
