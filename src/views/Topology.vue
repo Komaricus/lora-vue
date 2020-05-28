@@ -38,7 +38,6 @@
   import {Network} from "vue-vis-network";
 
   import config from "@/config"
-  import mocks from "@/mocks"
 
   export default {
     name: "Topology",
@@ -249,12 +248,6 @@
               })
               .catch(error => {
                 console.error(error);
-                //Adds mocks
-                // this.nodes = mocks.nodes;
-                // this.edges = mocks.edges;
-                // this.devices = mocks.devices;
-                // this.linksMap = mocks.linksMap;
-                // this.nodesIndexes = mocks.nodesIndexes;
               });
 
             this.connect();
@@ -324,11 +317,39 @@
 
         this.options.physics.enabled = true;
       },
+      async updateMacs() {
+        const switches = axios.get(`${config.back}/v1.0/topology/switches`);
+        const hosts = axios.get(`${config.back}/v1.0/topology/hosts`);
+
+        await axios.all([switches, hosts])
+          .then(responses => {
+            for (const sw of responses[0].data) {
+              this.devices[sw.dpid].ports = sw.ports;
+            }
+
+            this.hostsMacs = {};
+            for (const host of responses[1].data) {
+              if (host.ipv4) {
+                const hostId = "host" + +host.ipv4[0].split('.')[3];
+                if (host.ipv6.length) this.hosts[hostId].ipv6 = host.ipv6;
+                this.hosts[hostId].mac = host.mac;
+                this.hosts[hostId].port = host.port;
+                this.hostsMacs[host.mac] = hostId;
+              }
+            }
+
+            this.setLocalTopology();
+          })
+          .catch(error => {
+            console.error(error);
+          });
+      },
       async onEmulationStatusChanged(status) {
         this.$store.commit("setLoading", true);
         if (status) {
           await axios.get(`${config.api}/net/start`)
-            .then(() => {
+            .then(async () => {
+              await this.updateMacs();
               console.info('Starting emulation...');
               this.status = status;
               this.connect();
