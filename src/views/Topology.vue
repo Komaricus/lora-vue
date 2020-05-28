@@ -228,7 +228,8 @@
         nextHostId: 0x0000000000000000,
         hosts: {},
         links: [],
-        chargeDivider: 10000
+        chargeDivider: 10000,
+        hostsMacs: {}
       }
     },
     async created() {
@@ -237,26 +238,26 @@
         .then(async ({data}) => {
           this.status = data.status;
           if (data.status) {
-            // const switches = axios.get(`${config.back}/v1.0/topology/switches`);
-            // const links = axios.get(`${config.back}/v1.0/topology/links`);
-            // const hosts = axios.get(`${config.back}/v1.0/topology/hosts`);
-            //
-            // await axios.all([switches, links, hosts])
-            //   .then(responses => {
-            //     this.initTopology(responses[0].data, responses[1].data, responses[2].data);
-            //     this.setLocalTopology();
-            //   })
-            //   .catch(error => {
-            //     console.error(error);
-            //     //Adds mocks
-            //     // this.nodes = mocks.nodes;
-            //     // this.edges = mocks.edges;
-            //     // this.devices = mocks.devices;
-            //     // this.linksMap = mocks.linksMap;
-            //     // this.nodesIndexes = mocks.nodesIndexes;
-            //   });
-            //
-            // this.connect();
+            const switches = axios.get(`${config.back}/v1.0/topology/switches`);
+            const links = axios.get(`${config.back}/v1.0/topology/links`);
+            const hosts = axios.get(`${config.back}/v1.0/topology/hosts`);
+
+            await axios.all([switches, links, hosts])
+              .then(responses => {
+                this.initTopology(responses[0].data, responses[1].data, responses[2].data);
+                this.setLocalTopology();
+              })
+              .catch(error => {
+                console.error(error);
+                //Adds mocks
+                // this.nodes = mocks.nodes;
+                // this.edges = mocks.edges;
+                // this.devices = mocks.devices;
+                // this.linksMap = mocks.linksMap;
+                // this.nodesIndexes = mocks.nodesIndexes;
+              });
+
+            this.connect();
           } else {
             let switches, links, hosts;
             ({switches, links, hosts} = this.getLocalTopology());
@@ -359,6 +360,12 @@
             axios.get(`${config.back}/stats/flow/${this.dpidToInt(dpid)}`)
               .then(({data}) => {
                 for (const action of data[this.dpidToInt(dpid)]) {
+                  if (action.actions[0] !== 'OUTPUT:CONTROLLER') {
+                    if (this.hostsMacs[action.match.dl_src]) {
+                      action.actions[0] = `${action.actions[0]} (${this.hosts[this.hostsMacs[action.match.dl_src]].label})`;
+                    }
+                  }
+
                   if (!this.devices[dpid].stats[action.actions[0]]) {
                     this.devices[dpid].stats[action.actions[0]] = {
                       data: [],
@@ -558,6 +565,8 @@
         hostData.links = [];
         hostData.x = this.position.x;
         hostData.y = this.position.y;
+
+        if (hostData.mac !== 'Not specified yet') this.hostsMacs[hostData.mac] = hostData.id;
 
         this.nodes.push(hostData);
         this.nodesIndexes[hostData.id] = this.nodes.length - 1;

@@ -103,6 +103,7 @@
             this.output += `<br>${response.data}`;
             this.$store.commit('notify', {
               title: 'Command completed',
+              message: `${this.getNodeNameByDpid(this.device.id)} ${command}`,
               type: 'success',
               position: 'bottom-right',
               duration: config.NOTIFICATION_DURATION
