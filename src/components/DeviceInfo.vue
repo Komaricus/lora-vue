@@ -98,7 +98,50 @@
         </template>
         <terminal :fullscreen="false" :device="device"/>
       </el-collapse-item>
-      <el-collapse-item name="5">
+      <el-collapse-item name="5" v-if="!device.hasOwnProperty('link') && !device.hasOwnProperty('host') && status">
+        <template slot="title">
+          <p class="bold">Flow</p>
+        </template>
+        <div v-if="device.flow.length">
+          <el-table
+              class="devices-table"
+              :data="device.flow"
+              stripe
+              border
+              highlight-current-row
+              style="width: 100%; color: #2c3e50">
+            <el-table-column
+                label="name">
+              <template slot-scope="scope">
+                <span>{{ scope.row.actions[0] }}</span>
+              </template>
+            </el-table-column>
+            <el-table-column
+                label="Dest. MAC">
+              <template slot-scope="scope">
+                <span>{{ scope.row.match.dl_dst ? scope.row.match.dl_dst : '-' }}</span>
+              </template>
+            </el-table-column>
+            <el-table-column
+                label="Src. MAC">
+              <template slot-scope="scope">
+                <span>{{ scope.row.match.dl_src ? scope.row.match.dl_src : '-' }}</span>
+              </template>
+            </el-table-column>
+            <el-table-column
+                label="In Port"
+                width="70">
+              <template slot-scope="scope">
+                <span>{{ scope.row.match.in_port ? scope.row.match.in_port : '-' }}</span>
+              </template>
+            </el-table-column>
+          </el-table>
+        </div>
+        <div v-else>
+          Getting flow tables...
+        </div>
+      </el-collapse-item>
+      <el-collapse-item name="6">
         <template slot="title">
           <p class="bold">Settings</p>
         </template>
@@ -181,12 +224,12 @@
       }
 
       await axios.get(`${config.api}/initial_charge`)
-      .then(({data}) => {
-        this.charge = data.charge;
-      })
-      .catch(error => {
-        console.error(error)
-      });
+        .then(({data}) => {
+          this.charge = data.charge;
+        })
+        .catch(error => {
+          console.error(error)
+        });
     },
     watch: {
       activeNames() {
@@ -196,17 +239,17 @@
     methods: {
       async setCharge() {
         await axios.put(`${config.api}/initial_charge`, {
-          charge: this.charge
-        })
-        .then(() => {
-          this.$store.commit('notify', {
-            title: 'Devices Initial Battery Capacity updated!',
-            type: 'success',
-            position: 'bottom-right',
-            duration: config.NOTIFICATION_DURATION
-          });
-          this.$emit('charge-divider-updated', this.charge)
-        })
+            charge: this.charge
+          })
+          .then(() => {
+            this.$store.commit('notify', {
+              title: 'Devices Initial Battery Capacity updated!',
+              type: 'success',
+              position: 'bottom-right',
+              duration: config.NOTIFICATION_DURATION
+            });
+            this.$emit('charge-divider-updated', this.charge)
+          })
           .catch(error => {
             console.error(error)
           });

@@ -297,7 +297,8 @@
                 data: [],
                 range: []
               },
-              stats: {}
+              stats: {},
+              flow: []
             };
         }
 
@@ -325,6 +326,10 @@
           .then(responses => {
             for (const sw of responses[0].data) {
               this.devices[sw.dpid].ports = sw.ports;
+              if (this.devices[sw.dpid].image === '/images/router-uncharged.png') {
+                this.devices[sw.dpid].image = '/images/router.png';
+                this.nodes[this.nodesIndexes[sw.dpid]].image = '/images/router.png';
+              }
             }
 
             this.hostsMacs = {};
@@ -364,6 +369,9 @@
           await axios.get(`${config.api}/net/stop`)
             .then(() => {
               console.info('Stopping emulation...');
+              for (const dpid in this.devices) {
+                this.devices[dpid].flow = [];
+              }
               this.status = status;
             })
             .catch(error => {
@@ -380,6 +388,10 @@
           for (const dpid in this.devices) {
             axios.get(`${config.back}/stats/flow/${this.dpidToInt(dpid)}`)
               .then(({data}) => {
+                this.devices[dpid].flow = data[this.dpidToInt(dpid)].sort((a, b) => {
+                  if (a.actions[0] > b.actions[0]) return 1;
+                  else return -1;
+                });
                 for (const action of data[this.dpidToInt(dpid)]) {
                   if (action.actions[0] !== 'OUTPUT:CONTROLLER') {
                     if (this.hostsMacs[action.match.dl_src]) {
@@ -636,7 +648,8 @@
             data: [],
             range: []
           },
-          stats: {}
+          stats: {},
+          flow: []
         };
 
         this.$store.commit('notify', {
@@ -840,6 +853,9 @@
       },
       deleteHost(id) {
         const label = this.hosts[id].label;
+        if (this.hostsMacs[this.hosts[id].mac]) {
+          delete this.hostsMacs[this.hosts[id].mac];
+        }
 
         for (const link of this.hosts[id].links) {
           this.deleteLink({

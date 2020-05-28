@@ -8,7 +8,7 @@
         style="padding-bottom: 10px">
     </el-switch>
 
-    <apexchart ref="statsChart" type="line" height="350" :options="chartOptions" :series="series"></apexchart>
+    <apexchart ref="statsChart" type="line" height="600" :options="chartOptions" :series="series"></apexchart>
   </div>
 </template>
 
@@ -41,7 +41,7 @@
         ],
         chartOptions: {
           chart: {
-            height: 400,
+            height: 500,
             type: 'line',
             dropShadow: {
               enabled: true,
