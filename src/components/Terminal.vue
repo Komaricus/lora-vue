@@ -47,7 +47,7 @@
         loading: false,
         output: '',
         styleObject: {
-          maxWidth: '600px',
+          maxWidth: '100%',
           height: '400px'
         },
         timeout: 5

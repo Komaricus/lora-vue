@@ -1207,7 +1207,8 @@
   }
 
   .left-menu.active {
-    width: 800px;
+    width: 50%;
+    min-width: 50%;
   }
 
   .tooltip {
