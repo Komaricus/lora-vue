@@ -2,6 +2,7 @@
 <p align="center">
   <img alt="Lora-vue Logo" width="460" height="300" src="/src/assets/main-logo.svg">
 </p>
+
 ## About
 
 This application shows Lora-network emulation in real time. 
