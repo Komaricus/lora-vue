@@ -583,8 +583,12 @@
       },
       addHost(hostData) {
         if (hostData.ipv4) {
-          const dpid = +hostData.ipv4[0].split('.')[3];
-          hostData.dpid = this.generateNewHostID(dpid);
+          if (!hostData.ipv4.length) {
+            hostData.dpid = this.generateNewHostID();
+          } else {
+            const dpid = +hostData.ipv4[0].split('.')[3];
+            hostData.dpid = this.generateNewHostID(dpid);
+          }
         } else if (hostData.dpid) {
           hostData.ipv4 = [`10.0.0.${this.dpidToInt(hostData.dpid)}`];
         }
