@@ -2,7 +2,10 @@
   <div class="home">
     <img alt="logo" src="../assets/main-logo.svg">
     <p>This application shows Lora-network emulation in real time.</p>
-    <el-button type="primary" @click="$router.push('/topology')">Get in it</el-button>
+    <div>
+      <el-button type="primary" @click="$router.push('/topology')">Get in it</el-button>
+      <el-button type="default" @click="$router.push('/about')">About</el-button>
+    </div>
   </div>
 </template>
 

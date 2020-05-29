@@ -11,12 +11,16 @@ h1, h2, h3, h4, h5, h6 {
   color: $primary;
 }
 
-p {
+p, ul, ol {
   font-size: 18px;
   color: $primary;
 }
 
 #app > div > div.nav-bar > button.el-button.el-button--default.el-button--small.is-circle > i {
+  font-size: 18px;
+}
+
+#app > div > div.nav-bar > button.el-button.el-button--default.is-circle > i {
   font-size: 18px;
 }
 
