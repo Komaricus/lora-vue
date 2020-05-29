@@ -146,7 +146,7 @@
                 <el-button
                     size="mini"
                     type="danger"
-                    @click.stop="deleteFlowDialog(scope.row)">Delete
+                    @click.stop="deleteFlowDialog(scope.$index, scope.row)">Delete
                 </el-button>
               </template>
             </el-table-column>
@@ -306,14 +306,14 @@
       editFlow(index, flow) {
         console.info(index, flow);
       },
-      deleteFlowDialog(flow) {
+      deleteFlowDialog(index, flow) {
         this.$confirm(`Are you sure you want to delete Flow: ${flow.name}?`,
           'Delete warning', {
             confirmButtonText: 'Delete',
             cancelButtonText: 'Cancel',
             type: 'warning'
           }).then(() => {
-          this.deleteFlow(flow);
+          this.deleteFlow(index, flow);
         }).catch(() => {
           this.$store.commit('notify', {
             title: 'Delete canceled',
@@ -334,27 +334,30 @@
           this.flowPreviewDialog = true;
         }
       },
-      async deleteFlow(flow) {
+      async deleteFlow(index, flow) {
         await axios.post(`${config.back}/stats/flowentry/delete`, {
             dpid: this.dpidToInt(this.device.id),
             cookie: flow.cookie,
             'table_id': flow.table_id,
-            // "idle_timeout": 30,
-            // "hard_timeout": 30,
             priority: flow.priority,
-            // "flags": 1,
             match: {
               "in_port": flow.match.in_port
             },
             actions: [
               {
                 type: flow.actions[0].split(':')[0],
-                port: +flow.actions[0].split(':')[1]
+                port: flow.actions[0].split(':')[1] === 'CONTROLLER' ? 'CONTROLLER' : +flow.actions[0].split(':')[1]
               }
             ]
           })
-          .then(response => {
-            console.info(response);
+          .then(() => {
+            this.device.flow.splice(index, 1);
+            this.$store.commit('notify', {
+              title: 'Flow deleted',
+              type: 'success',
+              position: 'bottom-right',
+              duration: config.NOTIFICATION_DURATION
+            });
           })
           .catch(error => {
             console.error(error);
