@@ -388,36 +388,40 @@
           for (const dpid in this.devices) {
             axios.get(`${config.back}/stats/flow/${this.dpidToInt(dpid)}`)
               .then(({data}) => {
-                this.devices[dpid].flow = data[this.dpidToInt(dpid)];
-                this.devices[dpid].flow.sort((a, b) => {
-                  if (a.actions[0] > b.actions[0]) return 1;
-                  else return -1;
-                });
                 for (const action of data[this.dpidToInt(dpid)]) {
+                  action.name = '';
                   if (action.actions[0] !== 'OUTPUT:CONTROLLER') {
                     const hostFrom = this.hosts[this.hostsMacs[action.match.dl_src]].label;
                     const hostTo = this.hosts[this.hostsMacs[action.match.dl_dst]].label;
                     if (hostTo && hostFrom) {
-                      action.actions[0] = `${hostFrom} -> ${hostTo}`;
+                      action.name = `${hostFrom} -> ${hostTo}`;
                     }
+                  } else {
+                    action.name = action.actions[0];
                   }
 
-                  if (!this.devices[dpid].stats[action.actions[0]]) {
-                    this.devices[dpid].stats[action.actions[0]] = {
+                  if (!this.devices[dpid].stats[action.name]) {
+                    this.devices[dpid].stats[action.name] = {
                       data: [],
                       range: []
                     };
                   }
 
                   const tick = {x: new Date().toLocaleTimeString(), y: action.packet_count};
-                  this.devices[dpid].stats[action.actions[0]].data.push(tick);
-                  this.devices[dpid].stats[action.actions[0]].range.push(tick.x);
+                  this.devices[dpid].stats[action.name].data.push(tick);
+                  this.devices[dpid].stats[action.name].range.push(tick.x);
 
-                  if (this.devices[dpid].stats[action.actions[0]].data.length > config.STATS_CHART_MAX_ITEMS) {
-                    this.devices[dpid].stats[action.actions[0]].data.shift();
-                    this.devices[dpid].stats[action.actions[0]].range.shift();
+                  if (this.devices[dpid].stats[action.name].data.length > config.STATS_CHART_MAX_ITEMS) {
+                    this.devices[dpid].stats[action.name].data.shift();
+                    this.devices[dpid].stats[action.name].range.shift();
                   }
                 }
+
+                this.devices[dpid].flow = data[this.dpidToInt(dpid)];
+                this.devices[dpid].flow.sort((a, b) => {
+                  if (a.actions[0] > b.actions[0]) return 1;
+                  else return -1;
+                });
               })
               .catch(error => {
                 console.error(error)

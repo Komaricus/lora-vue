@@ -109,11 +109,12 @@
               stripe
               border
               highlight-current-row
-              style="width: 100%; color: #2c3e50">
+              style="width: 100%; color: #2c3e50"
+              @current-change="onFlowClicked">
             <el-table-column
                 label="name">
               <template slot-scope="scope">
-                <span>{{ scope.row.actions[0] }}</span>
+                <span>{{ scope.row.name }}</span>
               </template>
             </el-table-column>
             <el-table-column
@@ -135,7 +136,32 @@
                 <span>{{ scope.row.match.in_port ? scope.row.match.in_port : '-' }}</span>
               </template>
             </el-table-column>
+            <el-table-column
+                label="Options">
+              <template slot-scope="scope">
+                <el-button
+                    size="mini"
+                    @click.stop="editFlow(scope.$index, scope.row)">Edit
+                </el-button>
+                <el-button
+                    size="mini"
+                    type="danger"
+                    @click.stop="deleteFlowDialog(scope.row)">Delete
+                </el-button>
+              </template>
+            </el-table-column>
           </el-table>
+
+          <el-row style="padding-top: 10px">
+            <el-button type="primary" size="medium" icon="mdi mdi-plus">Add Flow</el-button>
+          </el-row>
+
+          <el-dialog title="Flow description" :visible.sync="flowPreviewDialog" width="400px">
+            <el-row v-for="(value, key) in this.selectedFlow" :key="key">
+              <el-col :span="12"><span class="preview-title">{{key}}</span></el-col>
+              <el-col :span="12"><span class="preview-item">{{value}}</span></el-col>
+            </el-row>
+          </el-dialog>
         </div>
         <div v-else>
           Getting flow tables...
@@ -213,7 +239,9 @@
       return {
         activeNames: ['1', '2', '3', '4', '5'],
         tab: '0',
-        charge: 10000
+        charge: 10000,
+        selectedFlow: {},
+        flowPreviewDialog: false
       }
     },
     async created() {
@@ -274,7 +302,73 @@
       },
       handleCurrentChange(val) {
         if (val !== null) this.$emit('device-selected', val);
-      }
+      },
+      editFlow(index, flow) {
+        console.info(index, flow);
+      },
+      deleteFlowDialog(flow) {
+        this.$confirm(`Are you sure you want to delete Flow: ${flow.name}?`,
+          'Delete warning', {
+            confirmButtonText: 'Delete',
+            cancelButtonText: 'Cancel',
+            type: 'warning'
+          }).then(() => {
+          this.deleteFlow(flow);
+        }).catch(() => {
+          this.$store.commit('notify', {
+            title: 'Delete canceled',
+            type: 'info',
+            position: 'bottom-right',
+            duration: config.NOTIFICATION_DURATION
+          });
+        });
+      },
+      onFlowClicked(val) {
+        if (val) {
+          const flow = Object.assign({}, val);
+          for (const key in flow.match) {
+            flow[key] = flow.match[key];
+          }
+          delete flow.match;
+          this.selectedFlow = flow;
+          this.flowPreviewDialog = true;
+        }
+      },
+      async deleteFlow(flow) {
+        await axios.post(`${config.back}/stats/flowentry/delete`, {
+            dpid: this.dpidToInt(this.device.id),
+            cookie: flow.cookie,
+            'table_id': flow.table_id,
+            // "idle_timeout": 30,
+            // "hard_timeout": 30,
+            priority: flow.priority,
+            // "flags": 1,
+            match: {
+              "in_port": flow.match.in_port
+            },
+            actions: [
+              {
+                type: flow.actions[0].split(':')[0],
+                port: +flow.actions[0].split(':')[1]
+              }
+            ]
+          })
+          .then(response => {
+            console.info(response);
+          })
+          .catch(error => {
+            console.error(error);
+            this.$store.commit('notify', {
+              title: 'Something went wrong',
+              type: 'error',
+              position: 'bottom-right',
+              duration: config.NOTIFICATION_DURATION
+            });
+          })
+      },
+      dpidToInt(dpid) {
+        return Number("0x" + dpid);
+      },
     }
   }
 </script>
@@ -284,5 +378,14 @@
 
   .title {
     padding-bottom: 10px;
+  }
+
+  .preview-title {
+    font-size: 16px;
+    font-weight: bold;
+  }
+
+  .preview-item {
+    font-size: 16px;
   }
 </style>
