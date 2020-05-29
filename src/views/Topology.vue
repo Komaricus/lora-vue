@@ -390,7 +390,7 @@
               .then(({data}) => {
                 for (const action of data[this.dpidToInt(dpid)]) {
                   action.name = '';
-                  if (action.actions[0] !== 'OUTPUT:CONTROLLER') {
+                  if (action.actions[0] !== 'OUTPUT:CONTROLLER' && action.match.dl_dst !== undefined && action.match.dl_src !== undefined) {
                     const hostFrom = this.hosts[this.hostsMacs[action.match.dl_src]].label;
                     const hostTo = this.hosts[this.hostsMacs[action.match.dl_dst]].label;
                     if (hostTo && hostFrom) {

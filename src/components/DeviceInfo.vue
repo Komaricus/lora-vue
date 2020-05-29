@@ -141,10 +141,6 @@
               <template slot-scope="scope">
                 <el-button
                     size="mini"
-                    @click.stop="editFlow(scope.$index, scope.row)">Edit
-                </el-button>
-                <el-button
-                    size="mini"
                     type="danger"
                     @click.stop="deleteFlowDialog(scope.$index, scope.row)">Delete
                 </el-button>
@@ -153,7 +149,7 @@
           </el-table>
 
           <el-row style="padding-top: 10px">
-            <el-button type="primary" size="medium" icon="mdi mdi-plus">Add Flow</el-button>
+            <el-button type="primary" size="medium" icon="mdi mdi-plus" @click="openAddFlowDialog">Add Flow</el-button>
           </el-row>
 
           <el-dialog title="Flow description" :visible.sync="flowPreviewDialog" width="400px">
@@ -161,6 +157,45 @@
               <el-col :span="12"><span class="preview-title">{{key}}</span></el-col>
               <el-col :span="12"><span class="preview-item">{{value}}</span></el-col>
             </el-row>
+          </el-dialog>
+
+          <el-dialog title="Flow creation" :visible.sync="addFlowDialog" width="600px">
+            <el-form ref="form" :model="form" label-width="120px">
+              <el-form-item label="cookie">
+                <el-input v-model="form.cookie"></el-input>
+              </el-form-item>
+              <el-form-item label="table_id">
+                <el-input v-model="form.table_id"></el-input>
+              </el-form-item>
+              <el-form-item label="idle_timeout">
+                <el-input v-model="form.idle_timeout"></el-input>
+              </el-form-item>
+              <el-form-item label="hard_timeout">
+                <el-input v-model="form.hard_timeout"></el-input>
+              </el-form-item>
+              <el-form-item label="priority">
+                <el-input v-model="form.priority"></el-input>
+              </el-form-item>
+              <el-form-item label="in_port">
+                <el-input v-model="form.in_port"></el-input>
+              </el-form-item>
+              <el-form-item label="type">
+                <el-select v-model="form.type" placeholder="please select type">
+                  <el-option label="OUTPUT" value="OUTPUT"></el-option>
+                  <el-option label="GOTO_TABLE" value="GOTO_TABLE"></el-option>
+                  <el-option label="WRITE_METADATA" value="WRITE_METADATA"></el-option>
+                  <el-option label="METER" value="METER"></el-option>
+                </el-select>
+              </el-form-item>
+              <el-form-item label="port">
+                <el-input v-model="form.port"></el-input>
+              </el-form-item>
+
+              <el-form-item>
+                <el-button type="primary" @click="addFlow">Add</el-button>
+                <el-button @click="closeAddFlowDialog">Cancel</el-button>
+              </el-form-item>
+            </el-form>
           </el-dialog>
         </div>
         <div v-else>
@@ -241,7 +276,18 @@
         tab: '0',
         charge: 10000,
         selectedFlow: {},
-        flowPreviewDialog: false
+        flowPreviewDialog: false,
+        addFlowDialog: false,
+        form: {
+          cookie: '',
+          'table_id': '',
+          'idle_timeout': '',
+          'hard_timeout': '',
+          'in_port': '',
+          'type': '',
+          'port': '',
+          priority: ''
+        }
       }
     },
     async created() {
@@ -303,8 +349,38 @@
       handleCurrentChange(val) {
         if (val !== null) this.$emit('device-selected', val);
       },
-      editFlow(index, flow) {
-        console.info(index, flow);
+      async addFlow() {
+        await axios.post(`${config.back}/stats/flowentry/add`, {
+            dpid: this.dpidToInt(this.device.id),
+            cookie: this.form.cookie,
+            'table_id': this.form.table_id,
+            'idle_timeout': this.form.idle_timeout,
+            'hard_timeout': this.form.hard_timeout,
+            match: {
+              'in_port': this.form.in_port
+            },
+            actions: [{
+              type: this.form.type,
+              port: this.form.port
+            }]
+          })
+          .then(() => {
+            this.closeAddFlowDialog();
+            this.$store.commit('notify', {
+              title: 'Flow added',
+              type: 'success',
+              position: 'bottom-right',
+              duration: config.NOTIFICATION_DURATION
+            });
+          })
+          .catch(() => {
+            this.$store.commit('notify', {
+              title: 'Something went wrong',
+              type: 'error',
+              position: 'bottom-right',
+              duration: config.NOTIFICATION_DURATION
+            });
+          });
       },
       deleteFlowDialog(index, flow) {
         this.$confirm(`Are you sure you want to delete Flow: ${flow.name}?`,
@@ -372,6 +448,22 @@
       dpidToInt(dpid) {
         return Number("0x" + dpid);
       },
+      openAddFlowDialog() {
+        this.addFlowDialog = true;
+        this.form = {
+          cookie: 0,
+          'table_id': 0,
+          'idle_timeout': 0,
+          'hard_timeout': 0,
+          'in_port': 1,
+          'type': 'OUTPUT',
+          'port': 1,
+          priority: 32768
+        }
+      },
+      closeAddFlowDialog() {
+        this.addFlowDialog = false;
+      }
     }
   }
 </script>
