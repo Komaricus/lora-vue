@@ -28,7 +28,7 @@ npm run serve
 ```
 
 ## How to use it
-Please visit about page in application or wiki page of this repository to learn the basics of using Lora-vue application.
+Please visit about page in application or [wiki page](https://github.com/Komaricus/lora-vue/wiki) of this repository to learn the basics of using Lora-vue application.
 
 ## Configuration
 
@@ -63,3 +63,6 @@ This file contains several constants, that is used for running application.
 
 Some of constants only cosmetic and can be easily changed, but some of them, such as charts update timeouts, can reduce performance. 
 Anyway feel free to experiment with default config.
+
+## Feedback
+If you have any answers, suggestions or find a bug: feel free to create an issue or write to me 😀
