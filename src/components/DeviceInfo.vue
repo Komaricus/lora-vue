@@ -112,7 +112,7 @@
               style="width: 100%; color: #2c3e50"
               @current-change="onFlowClicked">
             <el-table-column
-                label="name">
+                label="Name">
               <template slot-scope="scope">
                 <span>{{ scope.row.name }}</span>
               </template>

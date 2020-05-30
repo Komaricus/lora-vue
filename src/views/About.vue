@@ -177,7 +177,7 @@
   .side-menu {
     position: fixed;
     top: 60px;
-    left: 0;
+    left: 15px;
     padding: 15px;
     color: #42b983;
 
