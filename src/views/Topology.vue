@@ -646,7 +646,7 @@
 
         this.devices[nodeData.id] = {
           id: nodeData.id,
-          label: 'Device ' + +nodeData.id,
+          label: 'Device ' + this.dpidToInt(nodeData.id),
           image: '/images/router-unactive.png',
           shape: 'image',
           ports: [],
